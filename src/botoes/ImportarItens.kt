@@ -74,7 +74,6 @@ class ImportarItens : AcaoRotinaJava{
                         novaLinhaIte.setCampo("PERCDESC", converterValorMonetario(json.percdesc.trim()))
                         novaLinhaIte.setCampo("QTDNEG", converterValorMonetario(json.qtdneg.trim()))
                         novaLinhaIte.setCampo("VLRUNIT", converterValorMonetario(json.vlrunit.trim()))
-                        novaLinhaIte.setCampo("DTALTER", json.dtalter.trim())
                         novaLinhaIte.setCampo("CODLOCALORIG", json.codlocalorig.trim())
                         novaLinhaIte.setCampo("NUNOTA", nunotaImp)
                         novaLinhaIte.save()
@@ -112,7 +111,7 @@ class ImportarItens : AcaoRotinaJava{
                 return@filter false
             return@filter true
         }.toTypedArray() // Remove linhas vazias
-        val ret = if (cells.isNotEmpty()) LinhaJson(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6], cells[7], cells[8]) else
+        val ret = if (cells.isNotEmpty()) LinhaJson(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6], cells[7]) else
             null
 
         if (ret == null) {
@@ -180,7 +179,6 @@ class ImportarItens : AcaoRotinaJava{
         val qtdneg: String,
         val vlrunit: String,
         val vlrtot: String,
-        val dtalter: String,
         val codlocalorig: String
     )
 }

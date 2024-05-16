@@ -71,8 +71,6 @@ class ImportarCabecalho : AcaoRotinaJava{
                         novaLinhaCab.setCampo("CODTIPOPER", json.codtipoper.trim())
                         novaLinhaCab.setCampo("CODTIPVENDA", json.codtipvenda.trim())
                         novaLinhaCab.setCampo("TIPMOV", json.tipmov.trim())
-                        novaLinhaCab.setCampo("DHTIPOPER", json.dhtipoper)
-                        novaLinhaCab.setCampo("DTALTER", json.dtalter)
                         novaLinhaCab.setCampo("DTNEG", json.dtneg)
                         novaLinhaCab.setCampo("VLRDESCTOT", converterValorMonetario(json.vlrdesctot))
                         novaLinhaCab.setCampo("VLRNOTA", converterValorMonetario(json.vlrnota))
@@ -113,7 +111,8 @@ class ImportarCabecalho : AcaoRotinaJava{
                 return@filter false
             return@filter true
         }.toTypedArray() // Remove linhas vazias
-        val ret = if (cells.isNotEmpty()) LinhaJson(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6], cells[7], cells[8], cells[9], cells[10], cells[11], cells[12], cells[13], cells[14]) else
+
+        val ret = if (cells.isNotEmpty()) LinhaJson(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6], cells[7], cells[8], cells[9], cells[10], cells[11], cells[12]) else
             null
 
         if (ret == null) {
@@ -182,8 +181,6 @@ class ImportarCabecalho : AcaoRotinaJava{
         val codtipoper: String,
         val codtipvenda: String,
         val tipmov: String,
-        val dhtipoper: String,
-        val dtalter: String,
         val dtneg: String,
         val vlrdesctot: String,
         val vlrnota: String,
