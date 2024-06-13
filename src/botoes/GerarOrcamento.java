@@ -15,8 +15,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-
-public class GerarNotas implements AcaoRotinaJava {
+/**
+ * Realiza a geração do orçamento*/
+public class GerarOrcamento implements AcaoRotinaJava {
     @Override
     public void doAction(ContextoAcao contextoAcao) throws Exception {
 
@@ -43,7 +44,6 @@ public class GerarNotas implements AcaoRotinaJava {
                     newCab.set("VLRNOTA", cab.asBigDecimal("VLRNOTA"));
                     newCab.set("CODCENCUS", cab.asBigDecimal("CODCENCUS"));
                     newCab.set("CODNAT", cab.asBigDecimal("CODNAT"));
-
                     DynamicVO cabVO = newCab.save();
                     BigDecimal nunota = cabVO.asBigDecimal("NUNOTA");
                     notas.add(nunota);
