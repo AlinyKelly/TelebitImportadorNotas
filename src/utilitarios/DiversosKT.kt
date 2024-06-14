@@ -176,3 +176,13 @@ fun mensagemErro(mensagem: String?) {
         MGEModelException.throwMe(e)
     }
 }
+
+fun converterUTF8ISO88591(texto: String):String {
+    // Convertendo a string UTF-8 para um array de bytes usando a codificação ISO-8859-1
+    val bytes = texto.toByteArray(Charsets.ISO_8859_1)
+
+    // Convertendo o array de bytes de volta para uma string usando a codificação UTF-8
+    val correctString = String(bytes, Charsets.UTF_8)
+
+    return correctString
+}

@@ -20,7 +20,7 @@ import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
-class ImportarCabecalho : AcaoRotinaJava{
+class ImportarPO : AcaoRotinaJava {
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
         var hnd: JapeSession.SessionHandle? = null
@@ -33,11 +33,11 @@ class ImportarCabecalho : AcaoRotinaJava{
             for (linha in linhasSelecionadas) {
                 var count = 0
 
-                val codimportacao = linha.getCampo("CODIMPORTACAO") as BigDecimal?
+                val codimportacao = linha.getCampo("CODIMPPO") as BigDecimal?
 
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
-                val file = File(ctx.tempFolder, "IMPCABECALHO" + System.currentTimeMillis())
+                val file = File(ctx.tempFolder, "ARQUIVOITEPO" + System.currentTimeMillis())
                 FileUtils.writeByteArrayToFile(file, data)
 
                 hnd = JapeSession.open()
@@ -61,22 +61,22 @@ class ImportarCabecalho : AcaoRotinaJava{
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val novaLinhaCab = contextoAcao.novaLinha("AD_IMPORTNOTASCAB")
-                        novaLinhaCab.setCampo("CODIMPORTACAO", codimportacao)
-                        novaLinhaCab.setCampo("AD_IDEXTERNO", json.idExterno.trim())
-                        novaLinhaCab.setCampo("NUMNOTA", json.numnota.trim())
-                        novaLinhaCab.setCampo("SERIENOTA", json.serienota.trim())
-                        novaLinhaCab.setCampo("CODEMP", json.codemp.trim())
-                        novaLinhaCab.setCampo("CODPARC", json.codparc.trim())
-                        novaLinhaCab.setCampo("CODTIPOPER", json.codtipoper.trim())
-                        novaLinhaCab.setCampo("CODTIPVENDA", json.codtipvenda.trim())
-                        novaLinhaCab.setCampo("TIPMOV", json.tipmov.trim())
-                        novaLinhaCab.setCampo("DTNEG", json.dtneg)
-                        novaLinhaCab.setCampo("VLRDESCTOT", converterValorMonetario(json.vlrdesctot))
-                        novaLinhaCab.setCampo("VLRNOTA", converterValorMonetario(json.vlrnota))
-                        novaLinhaCab.setCampo("CODCENCUS", json.codcencus.trim())
-                        novaLinhaCab.setCampo("CODNAT", json.codnat.trim())
-                        novaLinhaCab.save()
+                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTPOITE")
+                        novaLinhaIte.setCampo("CODIMPPO", codimportacao)
+                        novaLinhaIte.setCampo("NUNOTA", json.nroUnico.trim())
+                        novaLinhaIte.setCampo("NUNOTAPED", json.pedidoFaturado.trim())
+                        novaLinhaIte.setCampo("SEQUENCIA", json.seqItem.trim())
+                        novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
+                        novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
+                        novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
+                        novaLinhaIte.setCampo("PEDIDOPO", json.pedido.trim())
+                        novaLinhaIte.setCampo("ITEMPO", json.itemPo.trim())
+                        novaLinhaIte.setCampo("EMISSAOPO", formatarDataString(json.emissaoPO.trim()))
+                        novaLinhaIte.setCampo("APROVACAOPO", formatarDataString(json.aprovacaoPO.trim()))
+                        novaLinhaIte.setCampo("PRAZO", formatarDataString(json.prazo.trim()))
+                        novaLinhaIte.setCampo("VALORPED", converterValorMonetario(json.valorPedido.trim()))
+                        novaLinhaIte.setCampo("MUNICIPIO", json.municipio.trim())
+                        novaLinhaIte.save()
 
                         line = br.readLine()
 
@@ -111,8 +111,21 @@ class ImportarCabecalho : AcaoRotinaJava{
                 return@filter false
             return@filter true
         }.toTypedArray() // Remove linhas vazias
-
-        val ret = if (cells.isNotEmpty()) LinhaJson(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6], cells[7], cells[8], cells[9], cells[10], cells[11], cells[12]) else
+        val ret = if (cells.isNotEmpty()) LinhaJson(
+            cells[0],
+            cells[1],
+            cells[2],
+            cells[3],
+            cells[4],
+            cells[5],
+            cells[6],
+            cells[7],
+            cells[8],
+            cells[9],
+            cells[10],
+            cells[11],
+            cells[12]
+        ) else
             null
 
         if (ret == null) {
@@ -172,20 +185,41 @@ class ImportarCabecalho : AcaoRotinaJava{
         return Timestamp(System.currentTimeMillis())
     }
 
-    data class LinhaJson(
-        val idExterno: String,
-        val numnota: String,
-        val serienota: String,
-        val codemp: String,
-        val codparc: String,
-        val codtipoper: String,
-        val codtipvenda: String,
-        val tipmov: String,
-        val dtneg: String,
-        val vlrdesctot: String,
-        val vlrnota: String,
-        val codcencus: String,
-        val codnat: String
-    )
+    fun formatarDataString(originalDateStr: String): Timestamp? {
+        // Formato original da data
+        val originalFormat = SimpleDateFormat("M/dd/yyyy", Locale.US)
+        // Novo formato desejado
+        val newFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
 
+        // Parse da data original
+        val date: Date? = originalFormat.parse(originalDateStr)
+
+        return if (date != null) {
+            // Formatação da data para o novo formato (string)
+            val formattedDateStr = newFormat.format(date)
+            // Parse da string formatada para um Date
+            val formattedDate: Date? = newFormat.parse(formattedDateStr)
+            // Conversão do Date para Timestamp
+            formattedDate?.let { Timestamp(it.time) }
+        } else {
+            null // Retorna null se a data original for inválida
+        }
+
+    }
+
+    data class LinhaJson(
+        val nroUnico: String,
+        val pedidoFaturado: String,
+        val seqItem: String,
+        val itemBOQ: String,
+        val idandamento: String,
+        val idatividade: String,
+        val pedido: String,
+        val itemPo: String,
+        val emissaoPO: String,
+        val aprovacaoPO: String,
+        val prazo: String,
+        val valorPedido: String,
+        val municipio: String
+    )
 }

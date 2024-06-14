@@ -15,73 +15,78 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+
 /**
- * Realiza a geração do orçamento*/
+ * Realiza a geração do orçamento
+ */
 public class GerarOrcamento implements AcaoRotinaJava {
     @Override
     public void doAction(ContextoAcao contextoAcao) throws Exception {
 
         List<BigDecimal> notas = new ArrayList<>();
+        List<BigDecimal> loteBOQcab = new ArrayList<>();
         Registro[] linhas = contextoAcao.getLinhas();
+        BigDecimal nunota = null;
 
-            for (Registro linha : linhas) {
-                Object codImportacao = linha.getCampo("CODIMPORTACAO");
+        for (Registro linha : linhas) {
+            Object codImportacao = linha.getCampo("CODIMPORTACAO");
 
-                Collection<DynamicVO> cabs = JapeHelper.getVOs("AD_IMPORTNOTASCAB", "CODIMPORTACAO = " + codImportacao);
-                for (DynamicVO cab : cabs) {
-                    BigDecimal codimpCab = cab.asBigDecimal("CODIMPCAB");
+            Collection<DynamicVO> boqs = JapeHelper.getVOs("AD_IMPORTNOTASITE", "CODIMPORTACAO = " + codImportacao);
+            for (DynamicVO boq : boqs) {
+                BigDecimal codimpIte = boq.asBigDecimalOrZero("CODIMPITE");
+                BigDecimal loteBOQ = boq.asBigDecimalOrZero("LOTEBOQ");
+                BigDecimal codprod = boq.asBigDecimalOrZero("CODPROD");
+                BigDecimal qtd = boq.asBigDecimalOrZero("QTDNEG");
+                BigDecimal vlrUnit = boq.asBigDecimalOrZero("VLRUNIT");
+//                BigDecimal percentual = boq.asBigDecimalOrZero("PERCDESC").divide(new BigDecimal(100));
+                BigDecimal vlrTotalItem = qtd.multiply(vlrUnit);
+//                BigDecimal desconto = vlrTotalItem.multiply(percentual);
+//                BigDecimal vlrTotal = vlrTotalItem.subtract(desconto);
+                BigDecimal vlrTotal = vlrTotalItem.multiply(qtd);
+
+                if (!loteBOQcab.contains(loteBOQ)) {
 
                     JapeHelper.CreateNewLine newCab = new JapeHelper.CreateNewLine("CabecalhoNota");
-                    newCab.set("NUMNOTA", cab.asBigDecimal("NUMNOTA"));
-                    newCab.set("SERIENOTA", cab.asString("SERIENOTA"));
-                    newCab.set("CODEMP", cab.asBigDecimal("CODEMP"));
-                    newCab.set("CODPARC", cab.asBigDecimal("CODPARC"));
-                    newCab.set("CODTIPOPER", cab.asBigDecimal("CODTIPOPER"));
-                    newCab.set("CODTIPVENDA", cab.asBigDecimal("CODTIPVENDA"));
-                    newCab.set("TIPMOV", cab.asString("TIPMOV"));
-                    newCab.set("DTNEG", cab.asTimestamp("DTNEG"));
-                    newCab.set("VLRDESCTOT", cab.asBigDecimal("VLRDESCTOT"));
-                    newCab.set("VLRNOTA", cab.asBigDecimal("VLRNOTA"));
-                    newCab.set("CODCENCUS", cab.asBigDecimal("CODCENCUS"));
-                    newCab.set("CODNAT", cab.asBigDecimal("CODNAT"));
+                    newCab.set("NUMNOTA", BigDecimal.ZERO);
+                    newCab.set("CODEMP", BigDecimal.ONE);
+                    newCab.set("CODPARC", boq.asBigDecimal("CODPARC"));
+                    newCab.set("CODTIPOPER", contextoAcao.getParametroSistema("TOPBOQ"));
+                    newCab.set("CODTIPVENDA", contextoAcao.getParametroSistema("TIPNEGBOQ"));
+                    newCab.set("TIPMOV", "P");
+                    newCab.set("DTNEG", boq.asTimestamp("DTINCBOQ"));
+                    newCab.set("VLRDESCTOT", BigDecimal.ZERO);
+                    newCab.set("CODCENCUS", contextoAcao.getParametroSistema("CODCENCUSBOQ"));
+                    newCab.set("CODNAT", contextoAcao.getParametroSistema("CODNATBOQ"));
                     DynamicVO cabVO = newCab.save();
-                    BigDecimal nunota = cabVO.asBigDecimal("NUNOTA");
+                    nunota = cabVO.asBigDecimal("NUNOTA");
                     notas.add(nunota);
 
-                    inserirNunotaImp("AD_IMPORTNOTASCAB", codImportacao, codimpCab, nunota);
-
-                    Collection<DynamicVO> itens = JapeHelper.getVOs("AD_IMPORTNOTASITE", "CODIMPORTACAO = " + codImportacao + " AND AD_IDEXTERNO = " + cab.asBigDecimal("AD_IDEXTERNO"));
-                    for (DynamicVO item : itens) {
-                        BigDecimal codimpIte = item.asBigDecimalOrZero("CODIMPITE");
-                        BigDecimal qtd = item.asBigDecimalOrZero("QTDNEG");
-                        BigDecimal vlrUnit = item.asBigDecimalOrZero("VLRUNIT");
-                        BigDecimal percentual = item.asBigDecimalOrZero("PERCDESC").divide(new BigDecimal(100));
-                        BigDecimal vlrTotalItem = qtd.multiply(vlrUnit);
-                        BigDecimal desconto = vlrTotalItem.multiply(percentual);
-                        BigDecimal vlrTotal = vlrTotalItem.subtract(desconto);
-
-                        JapeHelper.CreateNewLine newIte = new JapeHelper.CreateNewLine("ItemNota");
-                        DynamicVO produto = JapeHelper.getVO("Produto", "CODPROD=" + item.asBigDecimalOrZero("CODPROD"));
-                        newIte.set("NUNOTA", nunota);
-                        newIte.set("CODPROD", item.asBigDecimalOrZero("CODPROD"));
-                        newIte.set("QTDNEG", item.asBigDecimalOrZero("QTDNEG"));
-                        newIte.set("VLRUNIT", item.asBigDecimalOrZero("VLRUNIT"));
-                        newIte.set("PERCDESC", item.asBigDecimalOrZero("PERCDESC"));
-                        newIte.set("VLRTOT", vlrTotal);
-                        newIte.set("CODVOL", item.asString("CODVOL"));
-                        newIte.set("CODLOCALORIG", item.asBigDecimalOrZero("CODLOCALORIG"));
-                        newIte.set("USOPROD", produto.asString("USOPROD"));
-                        newIte.set("ATUALESTOQUE", BigDecimal.ZERO);
-                        newIte.save();
-
-                        inserirNunotaImp("AD_IMPORTNOTASITE", codImportacao, codimpIte, nunota);
-                    }
-
-                    recalcularImpostos(nunota);
+                    loteBOQcab.add(loteBOQ);
                 }
-            }
 
-        contextoAcao.setMensagemRetorno("Notas criadas com sucesso! " + notas.stream().map(BigDecimal::toString).collect(Collectors.joining(",")));
+
+                JapeHelper.CreateNewLine newIte = new JapeHelper.CreateNewLine("ItemNota");
+                DynamicVO produto = JapeHelper.getVO("Produto", "CODPROD=" + boq.asBigDecimalOrZero("CODPROD"));
+                newIte.set("NUNOTA", nunota);
+                newIte.set("CODPROD", boq.asBigDecimalOrZero("CODPROD"));
+                newIte.set("QTDNEG", boq.asBigDecimalOrZero("QTDNEG"));
+                newIte.set("VLRUNIT", boq.asBigDecimalOrZero("VLRUNIT"));
+                newIte.set("VLRTOT", vlrTotal);
+                newIte.set("CODVOL", "UN");
+                newIte.set("CODLOCALORIG", BigDecimal.ZERO);
+                newIte.set("USOPROD", produto.asString("USOPROD"));
+                newIte.set("ATUALESTOQUE", BigDecimal.ZERO);
+                DynamicVO iteVO = newIte.save();
+                BigDecimal sequencia = iteVO.asBigDecimalOrZero("SEQUENCIA");
+
+                inserirNunotaImp("AD_IMPORTNOTASITE", codImportacao, codimpIte, nunota, sequencia);
+
+
+                recalcularImpostos(nunota);
+            }
+        }
+
+        contextoAcao.setMensagemRetorno("BOQs criadas com sucesso! " + notas.stream().map(BigDecimal::toString).collect(Collectors.joining(",")));
     }
 
     private static void recalcularImpostos(BigDecimal nunota) throws Exception {
@@ -93,15 +98,16 @@ public class GerarOrcamento implements AcaoRotinaJava {
         impostosHelper.salvarNota();
     }
 
-    private static void inserirNunotaImp(String intancia, Object codImportacao, BigDecimal codigo, BigDecimal nunota) throws MGEModelException {
+    private static void inserirNunotaImp(String intancia, Object codImportacao, BigDecimal codigo, BigDecimal nunota, BigDecimal sequencia) throws MGEModelException {
         JapeSession.SessionHandle hnd = null;
 
         try {
-        hnd = JapeSession.open();
-        JapeFactory.dao(intancia).
-                prepareToUpdateByPK(codImportacao, codigo)
-                .set("NUNOTA", nunota)
-                .update();
+            hnd = JapeSession.open();
+            JapeFactory.dao(intancia).
+                    prepareToUpdateByPK(codImportacao, codigo)
+                    .set("NUNOTA", nunota)
+                    .set("SEQUENCIA", sequencia)
+                    .update();
         } catch (Exception e) {
             MGEModelException.throwMe(e);
         } finally {
