@@ -72,7 +72,7 @@ public class GerarOrcamento implements AcaoRotinaJava {
                 newIte.set("QTDNEG", boq.asBigDecimalOrZero("QTDNEG"));
                 newIte.set("VLRUNIT", boq.asBigDecimalOrZero("VLRUNIT"));
                 newIte.set("VLRTOT", vlrTotal);
-                newIte.set("CODVOL", "UN");
+                newIte.set("CODVOL", produto.asString("CODVOL"));
                 newIte.set("CODLOCALORIG", BigDecimal.ZERO);
                 newIte.set("USOPROD", produto.asString("USOPROD"));
                 newIte.set("ATUALESTOQUE", BigDecimal.ZERO);
