@@ -61,8 +61,8 @@ class ImportarFS : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTPOITE")
-                        novaLinhaIte.setCampo("CODIMPPO", codimportacao)
+                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTADORITEFS")
+                        novaLinhaIte.setCampo("CODFS", codimportacao)
                         novaLinhaIte.setCampo("NUNOTA", json.nroUnicoPO.trim())
                         novaLinhaIte.setCampo("NUNOTAFS", json.nroUnicoFS.trim())
                         novaLinhaIte.setCampo("SEQUENCIA", json.seqItem.trim())
@@ -70,10 +70,9 @@ class ImportarFS : AcaoRotinaJava {
                         novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
                         novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
                         novaLinhaIte.setCampo("NROFS", json.fs.trim())
-                        novaLinhaIte.setCampo("QTDFS", json.qtdFs.trim())
+                        novaLinhaIte.setCampo("QTDFS", converterValorMonetario(json.qtdFs.trim()))
                         novaLinhaIte.setCampo("EMISSAOFS", formatarDataString(json.emissaoFS.trim()))
                         novaLinhaIte.setCampo("STATUSFS", json.statusFS.trim())
-                        novaLinhaIte.setCampo("DADOSADICIONAIS", json.dadosAdicionais.trim())
                         novaLinhaIte.save()
 
                         line = br.readLine()
@@ -119,8 +118,7 @@ class ImportarFS : AcaoRotinaJava {
             cells[6],
             cells[7],
             cells[8],
-            cells[9],
-            cells[10]
+            cells[9]
         ) else
             null
 
@@ -213,7 +211,6 @@ class ImportarFS : AcaoRotinaJava {
         val fs: String,
         val qtdFs: String,
         val emissaoFS: String,
-        val statusFS: String,
-        val dadosAdicionais: String
+        val statusFS: String
     )
 }

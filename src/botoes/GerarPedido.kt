@@ -6,6 +6,7 @@ import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import com.sankhya.ce.jape.JapeHelper
+import utilitarios.DiversosAdv.retornaVO
 import utilitarios.getPropFromJSON
 import utilitarios.post
 import java.math.BigDecimal
@@ -37,6 +38,8 @@ class GerarPedido : AcaoRotinaJava {
                 val tipoOperacao = contextoAcao.getParametroSistema("TOPPO")
                 val dtFaturamento = converterDataFormato(po.asTimestamp("EMISSAOPO").toString())
                 val sequencia = po.asBigDecimalOrZero("SEQUENCIA")
+                val pedido = po.asString("PEDIDOPO")
+                val itemPO = po.asBigDecimalOrZero("ITEMPO")
 
                 if (!nunotaPOcab.contains(nunota)) {
                     val json = """  {
@@ -73,9 +76,13 @@ class GerarPedido : AcaoRotinaJava {
 
                         nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
 
-                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+                        atualizarCabPedido("CabecalhoNota", nunotaRetorno, pedido)
 
-                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+//                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+
+//                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+
+                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal(), "")
 
                         nunotaPOcab.add(nunota)
 
@@ -85,20 +92,59 @@ class GerarPedido : AcaoRotinaJava {
                     } else {
                         val statusMessage = getPropFromJSON("statusMessage", postbody)
 
-                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
+//                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
+
+                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, BigDecimal.ZERO, statusMessage)
+
                     }
 
                 } else {
-                    inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+//                    inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+//
+//                    inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
 
-                    inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+                    inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal(), "")
                 }
+
+                atualizarItensPedido(sequencia, itemPO)
 
             }
         }
 
+    }
 
+    private fun atualizarItensPedido(sequencia: BigDecimal?, itemPO: BigDecimal?) {
+        var hnd: JapeSession.SessionHandle? = null
 
+        try {
+            hnd = JapeSession.open()
+            JapeFactory.dao("ItemNota").prepareToUpdateByPK(nunotaRetorno, sequencia)
+                .set("AD_ITEMPO", itemPO)
+                .update()
+        } catch (e: Exception) {
+            MGEModelException.throwMe(e)
+        } finally {
+            JapeSession.close(hnd)
+        }
+    }
+
+    private fun atualizarCabPedido(
+        intancia: String,
+        pknunota: Any,
+        pedido: String,
+    ) {
+        var hnd: JapeSession.SessionHandle? = null
+
+        try {
+            hnd = JapeSession.open()
+            JapeFactory.dao(intancia).prepareToUpdateByPK(pknunota)
+                .set("AD_NROPO", pedido)
+                .update()
+        } catch (e: Exception) {
+            MGEModelException.throwMe(e)
+        } finally {
+            JapeSession.close(hnd)
+        }
     }
 
     private fun inserirNunotaImp(
@@ -140,6 +186,29 @@ class GerarPedido : AcaoRotinaJava {
             JapeSession.close(hnd)
         }
     }
+
+    private fun inserirNunotaOuErroAPI(
+        intancia: String,
+        codImportacao: Any,
+        codigoIteImportacao: BigDecimal,
+        nunotaPedidoFaturado: BigDecimal?,
+        mensagemErro: String?
+    ) {
+        var hnd: JapeSession.SessionHandle? = null
+
+        try {
+            hnd = JapeSession.open()
+            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigoIteImportacao)
+                .set("NUNOTAPED", nunotaPedidoFaturado)
+                .set("ERROR", mensagemErro)
+                .update()
+        } catch (e: Exception) {
+            MGEModelException.throwMe(e)
+        } finally {
+            JapeSession.close(hnd)
+        }
+    }
+
 
     fun formatarDataString(originalDateStr: String): Timestamp? {
         // Formato original da data
