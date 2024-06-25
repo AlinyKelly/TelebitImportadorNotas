@@ -16,6 +16,8 @@ import java.util.stream.Collectors
 import kotlin.collections.ArrayList
 
 class GerarPedido : AcaoRotinaJava {
+    private lateinit var nunotaRetorno: String
+
     override fun doAction(contextoAcao: ContextoAcao?) {
         val notas: MutableList<BigDecimal?> = ArrayList()
         val nunotaPOcab: MutableList<BigDecimal> = ArrayList()
@@ -34,7 +36,7 @@ class GerarPedido : AcaoRotinaJava {
                 val nunota = po.asBigDecimalOrZero("NUNOTA")
                 val tipoOperacao = contextoAcao.getParametroSistema("TOPPO")
                 val dtFaturamento = converterDataFormato(po.asTimestamp("EMISSAOPO").toString())
-                val sequencia = po.asBigDecimalOrZero("")
+                val sequencia = po.asBigDecimalOrZero("SEQUENCIA")
 
                 if (!nunotaPOcab.contains(nunota)) {
                     val json = """  {
@@ -66,10 +68,14 @@ class GerarPedido : AcaoRotinaJava {
 
                     val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", json)
                     val status = getPropFromJSON("status", postbody)
-                    val statusMessage = getPropFromJSON("statusMessage", postbody)
 
                     if (status == "1") {
-                        val nunotaRetorno = getPropFromJSON("nota", postbody)
+
+                        nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+
+                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+
+                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
 
                         nunotaPOcab.add(nunota)
 
@@ -77,9 +83,15 @@ class GerarPedido : AcaoRotinaJava {
                             "Pedidos criados com sucesso! " + notas.stream().map { obj: BigDecimal? -> obj.toString() }
                                 .collect(Collectors.joining(",")))
                     } else {
-                        inserirNunotaPedido("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
+                        val statusMessage = getPropFromJSON("statusMessage", postbody)
+
+                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
                     }
 
+                } else {
+                    inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+
+                    inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
                 }
 
             }
@@ -92,17 +104,15 @@ class GerarPedido : AcaoRotinaJava {
     private fun inserirNunotaImp(
         intancia: String,
         codImportacao: Any,
-        codigo: BigDecimal,
-        nunota: BigDecimal?,
-        sequencia: BigDecimal
+        codigoIteImportacao: BigDecimal,
+        nunotaPedidoFaturado: BigDecimal?
     ) {
         var hnd: JapeSession.SessionHandle? = null
 
         try {
             hnd = JapeSession.open()
-            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigo)
-                .set("NUNOTA", nunota)
-                .set("SEQUENCIA", sequencia)
+            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigoIteImportacao)
+                .set("NUNOTAPED", nunotaPedidoFaturado)
                 .update()
         } catch (e: Exception) {
             MGEModelException.throwMe(e)
@@ -111,18 +121,18 @@ class GerarPedido : AcaoRotinaJava {
         }
     }
 
-    private fun inserirNunotaPedido(
+    private fun inserirErroAPI(
         intancia: String,
         codImportacao: Any,
-        codigo: BigDecimal,
-        nunotaPedido: String?
+        codigoIteImportacao: BigDecimal,
+        mensagemErro: String?
     ) {
         var hnd: JapeSession.SessionHandle? = null
 
         try {
             hnd = JapeSession.open()
-            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigo)
-                .set("ERROR", nunotaPedido)
+            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigoIteImportacao)
+                .set("ERROR", mensagemErro)
                 .update()
         } catch (e: Exception) {
             MGEModelException.throwMe(e)
