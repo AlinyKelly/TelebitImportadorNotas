@@ -8,7 +8,10 @@ import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
+import utilitarios.convertIso88591ToUtf8
 import utilitarios.converterUTF8ISO88591
+import utilitarios.mensagemErro
+import utilitarios.removerCaracteresEspeciais
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -22,7 +25,7 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 /*
-* Bot„o para importar as informaÁıes da BOQ
+* Bot√£o para importar as informa√ß√µes da BOQ
 * */
 class ImportarBOQ : AcaoRotinaJava {
     @Throws(MGEModelException::class, IOException::class)
@@ -65,19 +68,19 @@ class ImportarBOQ : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val tipoBOQ = converterUTF8ISO88591(json.tipoBOQ.trim())
+                        val tipoBOQ = removerCaracteresEspeciais(converterUTF8ISO88591(json.tipoBOQ.trim()))
                         var tipo = ""
-                        tipo = if ("ServiÁo" == tipoBOQ) {
+                        tipo = if (tipoBOQ == "Servico") {
                             "S"
-                        } else if ("Adiciona" == tipoBOQ) {
+                        } else if (tipoBOQ == "Adiciona") {
                             "A"
-                        } else if ("Material" == tipoBOQ) {
+                        } else if (tipoBOQ == "Material") {
                             "M"
                         } else {
                             "N"
                         }
 
-                        val statusBOQ = converterUTF8ISO88591(json.statusBOQ.trim())
+                        val statusBOQ = removerCaracteresEspeciais(converterUTF8ISO88591(json.statusBOQ.trim()))
                         var status = ""
                         status = if ("Criado" == statusBOQ) {
                             "C"
@@ -89,7 +92,7 @@ class ImportarBOQ : AcaoRotinaJava {
                             "R"
                         } else if ("Revisado" == statusBOQ) {
                             "E"
-                        } else if ("Revis„o" == statusBOQ) {
+                        } else if ("Revisao" == statusBOQ) {
                             "V"
                         } else if ("RP" == statusBOQ) {
                             "S"
@@ -247,14 +250,14 @@ class ImportarBOQ : AcaoRotinaJava {
         val date: Date? = originalFormat.parse(originalDateStr)
 
         return if (date != null) {
-            // FormataÁ„o da data para o novo formato (string)
+            // Formata√ß√£o da data para o novo formato (string)
             val formattedDateStr = newFormat.format(date)
             // Parse da string formatada para um Date
             val formattedDate: Date? = newFormat.parse(formattedDateStr)
-            // Convers„o do Date para Timestamp
+            // Convers√£o do Date para Timestamp
             formattedDate?.let { Timestamp(it.time) }
         } else {
-            null // Retorna null se a data original for inv·lida
+            null // Retorna null se a data original for inv√°lida
         }
 
     }
