@@ -7,11 +7,14 @@ import com.google.gson.GsonBuilder
 import okhttp3.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.UnsupportedEncodingException
 import java.nio.charset.StandardCharsets
+import java.text.Normalizer
 import java.util.concurrent.TimeUnit
 import java.util.stream.Collectors
 import javax.script.Invocable
 import javax.script.ScriptEngineManager
+
 
 val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -185,4 +188,16 @@ fun converterUTF8ISO88591(texto: String):String {
     val correctString = String(bytes, Charsets.UTF_8)
 
     return correctString
+}
+
+fun convertIso88591ToUtf8(input: String): String {
+    // Decodifica a string de ISO-8859-1 para bytes
+    val isoBytes = input.toByteArray(charset("ISO-8859-1"))
+    // Reinterpreta os bytes como UTF-8
+    return String(isoBytes, StandardCharsets.UTF_8)
+}
+
+fun removerCaracteresEspeciais(palavra: String): String {
+    val normalizada = Normalizer.normalize(palavra, Normalizer.Form.NFD)
+    return normalizada.replace("[^\\p{ASCII}]".toRegex(), "")
 }
