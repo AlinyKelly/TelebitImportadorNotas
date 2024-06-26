@@ -40,6 +40,10 @@ class GerarPedido : AcaoRotinaJava {
                 val sequencia = po.asBigDecimalOrZero("SEQUENCIA")
                 val pedido = po.asString("PEDIDOPO")
                 val itemPO = po.asBigDecimalOrZero("ITEMPO")
+                val idAtividade = po.asBigDecimalOrZero("IDATIVIDADE") // nro da etapa da FAP
+                val idAndamento = po.asBigDecimalOrZero("IDANDAMENTO") // nro da FAP
+                val nroContrato = BigDecimal.ZERO
+                val nroProjeto = BigDecimal.ZERO
 
                 if (!nunotaPOcab.contains(nunota)) {
                     val json = """  {
@@ -76,7 +80,7 @@ class GerarPedido : AcaoRotinaJava {
 
                         nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
 
-                        atualizarCabPedido("CabecalhoNota", nunotaRetorno, pedido)
+                        atualizarCabPedido("CabecalhoNota", nunotaRetorno, pedido, idAndamento, nroContrato, nroProjeto)
 
 //                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
 
@@ -106,20 +110,21 @@ class GerarPedido : AcaoRotinaJava {
                     inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal(), "")
                 }
 
-                atualizarItensPedido(sequencia, itemPO)
+                atualizarItensPedido(sequencia, itemPO, idAtividade)
 
             }
         }
 
     }
 
-    private fun atualizarItensPedido(sequencia: BigDecimal?, itemPO: BigDecimal?) {
+    private fun atualizarItensPedido(sequencia: BigDecimal?, itemPO: BigDecimal?, idAtividade: BigDecimal?) {
         var hnd: JapeSession.SessionHandle? = null
 
         try {
             hnd = JapeSession.open()
             JapeFactory.dao("ItemNota").prepareToUpdateByPK(nunotaRetorno, sequencia)
                 .set("AD_ITEMPO", itemPO)
+                .set("AD_NUMETAPA", idAtividade)
                 .update()
         } catch (e: Exception) {
             MGEModelException.throwMe(e)
@@ -132,6 +137,9 @@ class GerarPedido : AcaoRotinaJava {
         intancia: String,
         pknunota: Any,
         pedido: String,
+        idAndamento: BigDecimal,
+        nroContrato: BigDecimal,
+        nroProjeto: BigDecimal
     ) {
         var hnd: JapeSession.SessionHandle? = null
 
@@ -139,6 +147,9 @@ class GerarPedido : AcaoRotinaJava {
             hnd = JapeSession.open()
             JapeFactory.dao(intancia).prepareToUpdateByPK(pknunota)
                 .set("AD_NROPO", pedido)
+                .set("AD_NUFAP", idAndamento) //ID Andamento
+                .set("NUMCONTRATO", nroContrato) //Nro do contrato
+                .set("CODPROJ", nroProjeto) //Nro do projeto
                 .update()
         } catch (e: Exception) {
             MGEModelException.throwMe(e)

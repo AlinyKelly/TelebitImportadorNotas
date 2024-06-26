@@ -66,9 +66,9 @@ class ImportarFS : AcaoRotinaJava {
                         novaLinhaIte.setCampo("NUNOTA", json.nroUnicoPO.trim())
                         novaLinhaIte.setCampo("NUNOTAFS", json.nroUnicoFS.trim())
                         novaLinhaIte.setCampo("SEQUENCIA", json.seqItem.trim())
-                        novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
                         novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
                         novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
+                        novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
                         novaLinhaIte.setCampo("NROFS", json.fs.trim())
                         novaLinhaIte.setCampo("QTDFS", converterValorMonetario(json.qtdFs.trim()))
                         novaLinhaIte.setCampo("EMISSAOFS", formatarDataString(json.emissaoFS.trim()))
@@ -205,9 +205,9 @@ class ImportarFS : AcaoRotinaJava {
         val nroUnicoPO: String,
         val nroUnicoFS: String,
         val seqItem: String,
-        val itemBOQ: String,
         val idandamento: String,
         val idatividade: String,
+        val itemBOQ: String,
         val fs: String,
         val qtdFs: String,
         val emissaoFS: String,

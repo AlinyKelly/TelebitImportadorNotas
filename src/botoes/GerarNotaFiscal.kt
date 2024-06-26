@@ -7,6 +7,7 @@ import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import com.sankhya.ce.jape.JapeHelper
 import utilitarios.getPropFromJSON
+import utilitarios.mensagemErro
 import utilitarios.post
 import java.math.BigDecimal
 import java.sql.Timestamp
@@ -35,9 +36,16 @@ class GerarNotaFiscal : AcaoRotinaJava {
                 val codimpIte = po.asBigDecimalOrZero("CODITEFS")
                 val nunota = po.asBigDecimalOrZero("NUNOTA")
                 val tipoOperacao = contextoAcao.getParametroSistema("TOPFS")
-                val serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+                var serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+                if (serieTipoOperacao == null) {
+                    serieTipoOperacao = ""
+                } else {
+                    serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+                }
+
                 val dtFaturamento = converterDataFormato(po.asTimestamp("EMISSAOFS").toString())
                 val sequencia = po.asBigDecimalOrZero("SEQUENCIA")
+                val nroFS = po.asBigDecimalOrZero("NROFS")
                 val qtdFS = po.asBigDecimalOrZero("QTDFS")
 
 //                if (!nunotaPOcab.contains(nunota)) {
@@ -110,6 +118,8 @@ class GerarNotaFiscal : AcaoRotinaJava {
 
                         inserirNunotaImp("AD_IMPORTADORITEFS", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
 
+                        atualizarItensPedido(nunotaRetorno.toBigDecimal(), sequencia, nroFS)
+
                         inserirErroAPI("AD_IMPORTADORITEFS", codImportacao, codimpIte, "")
 
                         nunotaPOcab.add(nunota)
@@ -132,6 +142,21 @@ class GerarNotaFiscal : AcaoRotinaJava {
             }
         }
 
+    }
+
+    private fun atualizarItensPedido(nunota: BigDecimal?, sequencia: BigDecimal?, nroFolha: BigDecimal?) {
+        var hnd: JapeSession.SessionHandle? = null
+
+        try {
+            hnd = JapeSession.open()
+            JapeFactory.dao("ItemNota").prepareToUpdateByPK(nunota, sequencia)
+                .set("AD_NROFS", nroFolha)
+                .update()
+        } catch (e: Exception) {
+            MGEModelException.throwMe(e)
+        } finally {
+            JapeSession.close(hnd)
+        }
     }
 
     private fun inserirNunotaImp(

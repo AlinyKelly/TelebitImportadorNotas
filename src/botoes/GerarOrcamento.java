@@ -35,6 +35,8 @@ public class GerarOrcamento implements AcaoRotinaJava {
             for (DynamicVO boq : boqs) {
                 BigDecimal codimpIte = boq.asBigDecimalOrZero("CODIMPITE");
                 BigDecimal loteBOQ = boq.asBigDecimalOrZero("LOTEBOQ");
+                BigDecimal idAtividade = boq.asBigDecimalOrZero("IDATIVIDADE");
+                BigDecimal idAndamento = boq.asBigDecimalOrZero("IDANDAMENTO");
                 BigDecimal codprod = boq.asBigDecimalOrZero("CODPROD");
                 BigDecimal qtd = boq.asBigDecimalOrZero("QTDNEG");
                 BigDecimal vlrUnit = boq.asBigDecimalOrZero("VLRUNIT");
@@ -57,6 +59,8 @@ public class GerarOrcamento implements AcaoRotinaJava {
                     newCab.set("VLRDESCTOT", BigDecimal.ZERO);
                     newCab.set("CODCENCUS", contextoAcao.getParametroSistema("CODCENCUSBOQ"));
                     newCab.set("CODNAT", contextoAcao.getParametroSistema("CODNATBOQ"));
+                    newCab.set("AD_LOTEBOQ", loteBOQ);
+                    newCab.set("AD_NUFAP", idAndamento); //id andamento
                     DynamicVO cabVO = newCab.save();
                     nunota = cabVO.asBigDecimal("NUNOTA");
                     notas.add(nunota);
@@ -79,6 +83,7 @@ public class GerarOrcamento implements AcaoRotinaJava {
                 newIte.set("CODLOCALORIG", BigDecimal.ZERO);
                 newIte.set("USOPROD", produto.asString("USOPROD"));
                 newIte.set("ATUALESTOQUE", BigDecimal.ZERO);
+                newIte.set("AD_NUMETAPA", idAtividade); //id atividade
                 DynamicVO iteVO = newIte.save();
                 BigDecimal sequencia = iteVO.asBigDecimalOrZero("SEQUENCIA");
 

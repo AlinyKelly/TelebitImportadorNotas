@@ -124,7 +124,9 @@ class ImportarPO : AcaoRotinaJava {
             cells[9],
             cells[10],
             cells[11],
-            cells[12]
+            cells[12],
+            cells[13],
+            cells[14]
         ) else
             null
 
@@ -211,9 +213,11 @@ class ImportarPO : AcaoRotinaJava {
         val nroUnico: String,
         val pedidoFaturado: String,
         val seqItem: String,
-        val itemBOQ: String,
         val idandamento: String,
         val idatividade: String,
+        val statusBOQ: String,
+        val loteBOQ: String,
+        val itemBOQ: String,
         val pedido: String,
         val itemPo: String,
         val emissaoPO: String,
