@@ -64,13 +64,16 @@ public class GerarOrcamento implements AcaoRotinaJava {
                     loteBOQcab.add(loteBOQ);
                 }
 
-
                 JapeHelper.CreateNewLine newIte = new JapeHelper.CreateNewLine("ItemNota");
-                DynamicVO produto = JapeHelper.getVO("Produto", "CODPROD=" + boq.asBigDecimalOrZero("CODPROD"));
+                DynamicVO produto = JapeHelper.getVO("Produto", "CODPROD=" + codprod);
+                if (produto == null) {
+                    produto = JapeHelper.getVO("Servico", "CODPROD=" + codprod);
+                }
+
                 newIte.set("NUNOTA", nunota);
-                newIte.set("CODPROD", boq.asBigDecimalOrZero("CODPROD"));
-                newIte.set("QTDNEG", boq.asBigDecimalOrZero("QTDNEG"));
-                newIte.set("VLRUNIT", boq.asBigDecimalOrZero("VLRUNIT"));
+                newIte.set("CODPROD", codprod);
+                newIte.set("QTDNEG", qtd);
+                newIte.set("VLRUNIT", vlrUnit);
                 newIte.set("VLRTOT", vlrTotal);
                 newIte.set("CODVOL", produto.asString("CODVOL"));
                 newIte.set("CODLOCALORIG", BigDecimal.ZERO);
@@ -81,12 +84,11 @@ public class GerarOrcamento implements AcaoRotinaJava {
 
                 inserirNunotaImp("AD_IMPORTNOTASITE", codImportacao, codimpIte, nunota, sequencia);
 
-
                 recalcularImpostos(nunota);
             }
         }
 
-        contextoAcao.setMensagemRetorno("BOQs criadas com sucesso! " + notas.stream().map(BigDecimal::toString).collect(Collectors.joining(",")));
+        contextoAcao.setMensagemRetorno("BOQs criadas com sucesso!");
     }
 
     private static void recalcularImpostos(BigDecimal nunota) throws Exception {
