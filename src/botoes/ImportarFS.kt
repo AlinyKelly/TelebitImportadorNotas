@@ -71,7 +71,7 @@ class ImportarFS : AcaoRotinaJava {
                         novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
                         novaLinhaIte.setCampo("NROFS", json.fs.trim())
                         novaLinhaIte.setCampo("QTDFS", converterValorMonetario(json.qtdFs.trim()))
-                        novaLinhaIte.setCampo("EMISSAOFS", formatarDataString(json.emissaoFS.trim()))
+                        novaLinhaIte.setCampo("EMISSAOFS", json.emissaoFS.trim())
                         novaLinhaIte.setCampo("STATUSFS", json.statusFS.trim())
                         novaLinhaIte.save()
 

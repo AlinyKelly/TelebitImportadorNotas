@@ -106,7 +106,7 @@ class ImportarBOQ : AcaoRotinaJava {
                         novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
                         novaLinhaIte.setCampo("CODPARC", json.codparc.trim())
                         novaLinhaIte.setCampo("CODPROD", json.itemBOQ.trim())
-                        novaLinhaIte.setCampo("DTINCBOQ", formatarDataString(json.dataInclusaoBOQ.trim()))
+                        novaLinhaIte.setCampo("DTINCBOQ", json.dataInclusaoBOQ.trim())
                         novaLinhaIte.setCampo("QTDNEG", converterValorMonetario(json.qtdBOQ.trim()))
                         novaLinhaIte.setCampo("LOTEBOQ", json.loteBOQ.trim())
                         novaLinhaIte.setCampo("TIPOBOQ", tipo)
