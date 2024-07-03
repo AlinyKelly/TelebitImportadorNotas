@@ -71,38 +71,6 @@ class ImportarBOQ : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val tipoBOQ = removerCaracteresEspeciais(converterUTF8ISO88591(json.tipoBOQ.trim()))
-                        var tipo = ""
-                        tipo = if (tipoBOQ == "Servico") {
-                            "S"
-                        } else if (tipoBOQ == "Adiciona") {
-                            "A"
-                        } else if (tipoBOQ == "Material") {
-                            "M"
-                        } else {
-                            "N"
-                        }
-
-                        val statusBOQ = removerCaracteresEspeciais(converterUTF8ISO88591(json.statusBOQ.trim()))
-                        var status = ""
-                        status = if ("Criado" == statusBOQ) {
-                            "C"
-                        } else if ("Pedido de PO" == statusBOQ) {
-                            "P"
-                        } else if ("PO Emitido" == statusBOQ) {
-                            "O"
-                        } else if ("Reprovado" == statusBOQ) {
-                            "R"
-                        } else if ("Revisado" == statusBOQ) {
-                            "E"
-                        } else if ("Revisao" == statusBOQ) {
-                            "V"
-                        } else if ("RP" == statusBOQ) {
-                            "S"
-                        } else {
-                            "N"
-                        }
-
 //                        val nroFAP = json.idandamento.trim().toBigDecimal()
 //
 //                        val buscarFAP = retornaVO("ProjetoServico", "NUFAP = $nroFAP")
@@ -131,7 +99,7 @@ class ImportarBOQ : AcaoRotinaJava {
                         novaLinhaIte.setCampo("DTINCBOQ", json.dataInclusaoBOQ.trim())
                         novaLinhaIte.setCampo("QTDNEG", converterValorMonetario(json.qtdBOQ.trim()))
                         novaLinhaIte.setCampo("LOTEBOQ", json.loteBOQ.trim())
-                        novaLinhaIte.setCampo("TIPOBOQ", tipo)
+                        novaLinhaIte.setCampo("TIPOBOQ", json.tipoBOQ.trim())
                         novaLinhaIte.setCampo("SITEID", json.siteID.trim())
                         novaLinhaIte.setCampo("ENDERECOID", json.enderecoID.trim())
                         novaLinhaIte.setCampo("MUNBOQ", json.municipioBOQ.trim())
@@ -143,7 +111,7 @@ class ImportarBOQ : AcaoRotinaJava {
                         novaLinhaIte.setCampo("VLRITELPU", converterValorMonetario(json.vlrItemLPU.trim()))
                         novaLinhaIte.setCampo("VLRUNIT", converterValorMonetario(json.vltUnitItem.trim()))
                         novaLinhaIte.setCampo("VLRTOT", converterValorMonetario(json.vlrItem.trim()))
-                        novaLinhaIte.setCampo("STATUSBOQ", status)
+                        novaLinhaIte.setCampo("STATUSBOQ", json.statusBOQ.trim())
                         novaLinhaIte.save()
 
                         line = br.readLine()
