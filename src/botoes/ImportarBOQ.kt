@@ -28,6 +28,9 @@ import java.util.regex.Pattern
 * Botão para importar as informações da BOQ
 * */
 class ImportarBOQ : AcaoRotinaJava {
+//    private var projeto: BigDecimal? = null
+//    private var contrato: BigDecimal? = null
+
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
         var hnd: JapeSession.SessionHandle? = null
@@ -100,10 +103,29 @@ class ImportarBOQ : AcaoRotinaJava {
                             "N"
                         }
 
+//                        val nroFAP = json.idandamento.trim().toBigDecimal()
+//
+//                        val buscarFAP = retornaVO("ProjetoServico", "NUFAP = $nroFAP")
+//                        if (buscarFAP != null) {
+//                            projeto = buscarFAP.asBigDecimalOrZero("AD_CODPROJ")
+//
+//                            val buscarContrato = retornaVO("Contrato", "CODPROJ = $projeto")
+//                            if (buscarContrato != null) {
+//                                contrato = buscarContrato.asBigDecimalOrZero("NUMCONTRATO")
+//                            } else {
+//                                contrato = BigDecimal.ZERO
+//                            }
+//
+//                        } else {
+//                            projeto = BigDecimal.ZERO
+//                        }
+
                         val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTNOTASITE")
                         novaLinhaIte.setCampo("CODIMPORTACAO", codimportacao)
                         novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
                         novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
+                        novaLinhaIte.setCampo("CODPROJ", json.projeto.trim())
+                        novaLinhaIte.setCampo("NUMCONTRATO", json.contrato.trim())
                         novaLinhaIte.setCampo("CODPARC", json.codparc.trim())
                         novaLinhaIte.setCampo("CODPROD", json.itemBOQ.trim())
                         novaLinhaIte.setCampo("DTINCBOQ", json.dataInclusaoBOQ.trim())
@@ -179,7 +201,9 @@ class ImportarBOQ : AcaoRotinaJava {
             cells[17],
             cells[18],
             cells[19],
-            cells[20]
+            cells[20],
+            cells[21],
+            cells[22]
         ) else
             null
 
@@ -265,6 +289,8 @@ class ImportarBOQ : AcaoRotinaJava {
     data class LinhaJson(
         val idandamento: String,
         val idatividade: String,
+        val projeto: String,
+        val contrato: String,
         val codparc: String,
         val loteBOQ: String,
         val tipoBOQ: String,
