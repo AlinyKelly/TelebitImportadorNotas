@@ -71,23 +71,6 @@ class ImportarBOQ : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-//                        val nroFAP = json.idandamento.trim().toBigDecimal()
-//
-//                        val buscarFAP = retornaVO("ProjetoServico", "NUFAP = $nroFAP")
-//                        if (buscarFAP != null) {
-//                            projeto = buscarFAP.asBigDecimalOrZero("AD_CODPROJ")
-//
-//                            val buscarContrato = retornaVO("Contrato", "CODPROJ = $projeto")
-//                            if (buscarContrato != null) {
-//                                contrato = buscarContrato.asBigDecimalOrZero("NUMCONTRATO")
-//                            } else {
-//                                contrato = BigDecimal.ZERO
-//                            }
-//
-//                        } else {
-//                            projeto = BigDecimal.ZERO
-//                        }
-
                         val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTNOTASITE")
                         novaLinhaIte.setCampo("CODIMPORTACAO", codimportacao)
                         novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
