@@ -8,6 +8,7 @@ import br.com.sankhya.modelcore.MGEModelException
 import com.sankhya.ce.jape.JapeHelper
 import utilitarios.DiversosAdv.retornaVO
 import utilitarios.getPropFromJSON
+import utilitarios.mensagemErro
 import utilitarios.post
 import java.math.BigDecimal
 import java.sql.Timestamp
@@ -17,7 +18,8 @@ import java.util.stream.Collectors
 import kotlin.collections.ArrayList
 
 class GerarPedido : AcaoRotinaJava {
-    private lateinit var nunotaRetorno: String
+
+    private var nunotaRetornoBigDecimal: BigDecimal? = null
 
     override fun doAction(contextoAcao: ContextoAcao?) {
         val notas: MutableList<BigDecimal?> = ArrayList()
@@ -66,7 +68,7 @@ class GerarPedido : AcaoRotinaJava {
                                            "faturarTodosItens":true,
                                            "umaNotaParaCada":"false",
                                            "ehWizardFaturamento":true,
-                                           "dtFixaVenc":"",
+                                           "dtFixaVenc":"$dtFaturamento",
                                            "ehPedidoWeb":false,
                                            "nfeDevolucaoViaRecusa":false
                                         }
@@ -78,15 +80,18 @@ class GerarPedido : AcaoRotinaJava {
 
                     if (status == "1") {
 
-                        nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+                        val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+                        nunotaRetornoBigDecimal = nunotaRetorno.toBigDecimal()
 
-                        atualizarCabPedido("CabecalhoNota", nunotaRetorno, pedido, idAndamento, nroContrato, nroProjeto)
+                        println("Nunota retornado pela API: $nunotaRetornoBigDecimal")
 
-//                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+//                        atualizarCabPedido("CabecalhoNota", nunotaRetornoBigDecimal!!, pedido, idAndamento, nroContrato, nroProjeto)
 
-//                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+                        inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
 
-                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal(), "")
+                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+
+//                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetornoBigDecimal, "")
 
                         nunotaPOcab.add(nunota)
 
@@ -96,33 +101,33 @@ class GerarPedido : AcaoRotinaJava {
                     } else {
                         val statusMessage = getPropFromJSON("statusMessage", postbody)
 
-//                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
+                        inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, statusMessage)
 
-                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, BigDecimal.ZERO, statusMessage)
+//                        inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, BigDecimal.ZERO, statusMessage)
 
                     }
 
                 } else {
-//                    inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
-//
-//                    inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+                    inserirNunotaImp("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetornoBigDecimal)
 
-                    inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal(), "")
+                    inserirErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, "")
+
+//                    inserirNunotaOuErroAPI("AD_IMPORTPOITE", codImportacao, codimpIte, nunotaRetornoBigDecimal, "")
                 }
 
-                atualizarItensPedido(sequencia, itemPO, idAtividade)
+                //atualizarItensPedido(nunotaRetornoBigDecimal, sequencia, itemPO, idAtividade)
 
             }
         }
 
     }
 
-    private fun atualizarItensPedido(sequencia: BigDecimal?, itemPO: BigDecimal?, idAtividade: BigDecimal?) {
+    private fun atualizarItensPedido(nunota:BigDecimal?, sequencia: BigDecimal?, itemPO: BigDecimal?, idAtividade: BigDecimal?) {
         var hnd: JapeSession.SessionHandle? = null
-
+        println("Nunota sem converter: $nunota")
         try {
             hnd = JapeSession.open()
-            JapeFactory.dao("ItemNota").prepareToUpdateByPK(nunotaRetorno, sequencia)
+            JapeFactory.dao("ItemNota").prepareToUpdateByPK(nunota, sequencia)
                 .set("AD_ITEMPO", itemPO)
                 .set("AD_NUMETAPA", idAtividade)
                 .update()
@@ -148,8 +153,8 @@ class GerarPedido : AcaoRotinaJava {
             JapeFactory.dao(intancia).prepareToUpdateByPK(pknunota)
                 .set("AD_NROPO", pedido)
                 .set("AD_NUFAP", idAndamento) //ID Andamento
-                .set("NUMCONTRATO", nroContrato) //Nro do contrato
-                .set("CODPROJ", nroProjeto) //Nro do projeto
+                //.set("NUMCONTRATO", nroContrato) //Nro do contrato
+                //.set("CODPROJ", nroProjeto) //Nro do projeto
                 .update()
         } catch (e: Exception) {
             MGEModelException.throwMe(e)

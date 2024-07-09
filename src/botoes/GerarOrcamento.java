@@ -37,13 +37,12 @@ public class GerarOrcamento implements AcaoRotinaJava {
                 BigDecimal loteBOQ = boq.asBigDecimalOrZero("LOTEBOQ");
                 BigDecimal idAtividade = boq.asBigDecimalOrZero("IDATIVIDADE");
                 BigDecimal idAndamento = boq.asBigDecimalOrZero("IDANDAMENTO");
+                String projeto = boq.asString("CODPROJ");
+                String contrato = boq.asString("NUMCONTRATO");
                 BigDecimal codprod = boq.asBigDecimalOrZero("CODPROD");
                 BigDecimal qtd = boq.asBigDecimalOrZero("QTDNEG");
                 BigDecimal vlrUnit = boq.asBigDecimalOrZero("VLRUNIT");
-//                BigDecimal percentual = boq.asBigDecimalOrZero("PERCDESC").divide(new BigDecimal(100));
                 BigDecimal vlrTotalItem = qtd.multiply(vlrUnit);
-//                BigDecimal desconto = vlrTotalItem.multiply(percentual);
-//                BigDecimal vlrTotal = vlrTotalItem.subtract(desconto);
                 BigDecimal vlrTotal = vlrTotalItem.multiply(qtd);
 
                 if (!loteBOQcab.contains(loteBOQ)) {
@@ -59,6 +58,8 @@ public class GerarOrcamento implements AcaoRotinaJava {
                     newCab.set("VLRDESCTOT", BigDecimal.ZERO);
                     newCab.set("CODCENCUS", contextoAcao.getParametroSistema("CODCENCUSBOQ"));
                     newCab.set("CODNAT", contextoAcao.getParametroSistema("CODNATBOQ"));
+                    newCab.set("CODPROJ", projeto);
+                    newCab.set("NUMCONTRATO", contrato);
                     newCab.set("AD_LOTEBOQ", loteBOQ);
                     newCab.set("AD_NUFAP", idAndamento); //id andamento
                     DynamicVO cabVO = newCab.save();

@@ -1,5 +1,8 @@
 package utilitarios
 
+import br.com.sankhya.jape.core.JapeSession
+import br.com.sankhya.jape.vo.DynamicVO
+import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import com.google.gson.Gson
@@ -200,4 +203,20 @@ fun convertIso88591ToUtf8(input: String): String {
 fun removerCaracteresEspeciais(palavra: String): String {
     val normalizada = Normalizer.normalize(palavra, Normalizer.Form.NFD)
     return normalizada.replace("[^\\p{ASCII}]".toRegex(), "")
+}
+
+@Throws(MGEModelException::class)
+fun retornaVO(instancia: String?, where: String?): DynamicVO? {
+    var dynamicVo: DynamicVO? = null
+    var hnd: JapeSession.SessionHandle? = null
+    try {
+        hnd = JapeSession.open()
+        val instanciaDAO = JapeFactory.dao(instancia)
+        dynamicVo = instanciaDAO.findOne(where)
+    } catch (e: java.lang.Exception) {
+        MGEModelException.throwMe(e)
+    } finally {
+        JapeSession.close(hnd)
+    }
+    return dynamicVo
 }

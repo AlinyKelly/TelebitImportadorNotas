@@ -95,6 +95,7 @@ class ImportarBOQ : AcaoRotinaJava {
                         novaLinhaIte.setCampo("VLRUNIT", converterValorMonetario(json.vltUnitItem.trim()))
                         novaLinhaIte.setCampo("VLRTOT", converterValorMonetario(json.vlrItem.trim()))
                         novaLinhaIte.setCampo("STATUSBOQ", json.statusBOQ.trim())
+                        novaLinhaIte.setCampo("TIPMOV", json.tipmov.trim())
                         novaLinhaIte.save()
 
                         line = br.readLine()
@@ -154,7 +155,8 @@ class ImportarBOQ : AcaoRotinaJava {
             cells[19],
             cells[20],
             cells[21],
-            cells[22]
+            cells[22],
+            cells[23]
         ) else
             null
 
@@ -242,6 +244,7 @@ class ImportarBOQ : AcaoRotinaJava {
         val idatividade: String,
         val projeto: String,
         val contrato: String,
+        val tipmov: String,
         val codparc: String,
         val loteBOQ: String,
         val tipoBOQ: String,

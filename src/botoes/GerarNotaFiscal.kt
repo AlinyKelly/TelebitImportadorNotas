@@ -17,7 +17,7 @@ import java.util.stream.Collectors
 import kotlin.collections.ArrayList
 
 class GerarNotaFiscal : AcaoRotinaJava {
-    private lateinit var nunotaRetorno: String
+    private var nunotaRetorno: String = ""
 
     override fun doAction(contextoAcao: ContextoAcao?) {
         val notas: MutableList<BigDecimal?> = ArrayList()
