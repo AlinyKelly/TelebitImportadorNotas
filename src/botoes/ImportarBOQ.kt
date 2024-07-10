@@ -9,10 +9,6 @@ import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import com.sankhya.ce.jape.JapeHelper
 import org.apache.commons.io.FileUtils
-import utilitarios.convertIso88591ToUtf8
-import utilitarios.converterUTF8ISO88591
-import utilitarios.mensagemErro
-import utilitarios.removerCaracteresEspeciais
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader

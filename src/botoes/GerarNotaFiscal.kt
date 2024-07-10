@@ -7,7 +7,6 @@ import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import com.sankhya.ce.jape.JapeHelper
 import utilitarios.getPropFromJSON
-import utilitarios.mensagemErro
 import utilitarios.post
 import java.math.BigDecimal
 import java.sql.Timestamp
@@ -23,10 +22,9 @@ class GerarNotaFiscal : AcaoRotinaJava {
         val notas: MutableList<BigDecimal?> = ArrayList()
         val nunotaPOcab: MutableList<BigDecimal> = ArrayList()
         val linhas = contextoAcao!!.linhas
-        var nunotaPedido: BigDecimal? = null
 
         for (linha in linhas) {
-            val codImportacao = linha.getCampo("CODFS")
+            val codImportacao = linha.getCampo("CODFS") as BigDecimal
 
             val pos = JapeHelper.getVOs(
                 "AD_IMPORTADORITEFS",
@@ -48,100 +46,91 @@ class GerarNotaFiscal : AcaoRotinaJava {
                 val nroFS = po.asBigDecimalOrZero("NROFS")
                 val qtdFS = po.asBigDecimalOrZero("QTDFS")
 
-//                if (!nunotaPOcab.contains(nunota)) {
-                    val json = """{
-  "serviceName": "SelecaoDocumentoSP.faturar",
-  "requestBody": {
-    "notas": {
-      "codTipOper": $tipoOperacao,
-      "dtFaturamento": "$dtFaturamento",
-      "serie": "$serieTipoOperacao",
-      "dtSaida": "",
-      "hrSaida": "",
-      "tipoFaturamento": "FaturamentoNormal",
-      "dataValidada": true,
-      "notasComMoeda": {},
-      "nota": [
-        { "NUNOTA": "$nunota", "itens": { "item": [{ "QTDFAT": $qtdFS, "$": $sequencia }] } }
-      ],
-      "codLocalDestino": "",
-      "conta2": 0,
-      "faturarTodosItens": false,
-      "umaNotaParaCada": "false",
-      "ehWizardFaturamento": true,
-      "dtFixaVenc": "",
-      "ehPedidoWeb": false,
-      "nfeDevolucaoViaRecusa": false,
-      "isFaturamentoDanfeSeguranca": false
-    },
-    "clientEventList": {
-      "clientEvent": [
-        { "$": "br.com.sankhya.actionbutton.clientconfirm" },
-        { "$": "br.com.sankhya.mgecom.enviar.recebimento.wms.sncm" },
-        { "$": "comercial.status.nfe.situacao.diferente" },
-        { "$": "br.com.sankhya.mgecom.compra.SolicitacaoComprador" },
-        { "$": "br.com.sankhya.mgecom.expedicao.SolicitarUsuarioConferente" },
-        { "$": "br.com.sankhya.mgecom.nota.adicional.SolicitarUsuarioGerente" },
-        { "$": "br.com.sankhya.mgecom.cancelamento.nfeAcimaTolerancia" },
-        { "$": "br.com.sankhya.mgecom.cancelamento.processo.wms.andamento" },
-        { "$": "br.com.sankhya.mgecom.msg.nao.possui.itens.pendentes" },
-        { "$": "br.com.sankhya.mgecomercial.event.baixaPortal" },
-        { "$": "br.com.sankhya.mgecom.valida.ChaveNFeCompraTerceiros" },
-        { "$": "br.com.sankhya.mgewms.expedicao.validarPedidos" },
-        { "$": "br.com.sankhya.mgecom.gera.lote.xmlRejeitado" },
-        { "$": "br.com.sankhya.comercial.solicitaContingencia" },
-        { "$": "br.com.sankhya.mgecom.cancelamento.notas.remessa" },
-        { "$": "br.com.sankhya.mgecomercial.event.compensacao.credito.debito" },
-        {
-          "$": "br.com.sankhya.modelcore.comercial.cancela.nota.devolucao.wms"
-        },
-        { "$": "br.com.sankhya.mgewms.expedicao.selecaoDocas" },
-        { "$": "br.com.sankhya.mgewms.expedicao.cortePedidos" },
-        {
-          "$": "br.com.sankhya.modelcore.comercial.cancela.nfce.baixa.caixa.fechado"
-        },
-        { "$": "br.com.utiliza.dtneg.servidor" },
-        {
-          "$": "br.com.sankhya.mgecomercial.event.estoque.insuficiente.produto"
-        }
-      ]
-    }
-  }
-}""".trimIndent()
+                val json = """{
+                              "serviceName": "SelecaoDocumentoSP.faturar",
+                              "requestBody": {
+                                "notas": {
+                                  "codTipOper": $tipoOperacao,
+                                  "dtFaturamento": "$dtFaturamento",
+                                  "serie": "$serieTipoOperacao",
+                                  "dtSaida": "",
+                                  "hrSaida": "",
+                                  "tipoFaturamento": "FaturamentoNormal",
+                                  "dataValidada": true,
+                                  "notasComMoeda": {},
+                                  "nota": [
+                                    { "NUNOTA": "$nunota", "itens": { "item": [{ "QTDFAT": $qtdFS, "$": $sequencia }] } }
+                                  ],
+                                  "codLocalDestino": "",
+                                  "conta2": 0,
+                                  "faturarTodosItens": false,
+                                  "umaNotaParaCada": "false",
+                                  "ehWizardFaturamento": true,
+                                  "dtFixaVenc": "",
+                                  "ehPedidoWeb": false,
+                                  "nfeDevolucaoViaRecusa": false,
+                                  "isFaturamentoDanfeSeguranca": false
+                                },
+                                "clientEventList": {
+                                  "clientEvent": [
+                                    { "$": "br.com.sankhya.actionbutton.clientconfirm" },
+                                    { "$": "br.com.sankhya.mgecom.enviar.recebimento.wms.sncm" },
+                                    { "$": "comercial.status.nfe.situacao.diferente" },
+                                    { "$": "br.com.sankhya.mgecom.compra.SolicitacaoComprador" },
+                                    { "$": "br.com.sankhya.mgecom.expedicao.SolicitarUsuarioConferente" },
+                                    { "$": "br.com.sankhya.mgecom.nota.adicional.SolicitarUsuarioGerente" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.nfeAcimaTolerancia" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.processo.wms.andamento" },
+                                    { "$": "br.com.sankhya.mgecom.msg.nao.possui.itens.pendentes" },
+                                    { "$": "br.com.sankhya.mgecomercial.event.baixaPortal" },
+                                    { "$": "br.com.sankhya.mgecom.valida.ChaveNFeCompraTerceiros" },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.validarPedidos" },
+                                    { "$": "br.com.sankhya.mgecom.gera.lote.xmlRejeitado" },
+                                    { "$": "br.com.sankhya.comercial.solicitaContingencia" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.notas.remessa" },
+                                    { "$": "br.com.sankhya.mgecomercial.event.compensacao.credito.debito" },
+                                    {
+                                      "$": "br.com.sankhya.modelcore.comercial.cancela.nota.devolucao.wms"
+                                    },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.selecaoDocas" },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.cortePedidos" },
+                                    {
+                                      "$": "br.com.sankhya.modelcore.comercial.cancela.nfce.baixa.caixa.fechado"
+                                    },
+                                    { "$": "br.com.utiliza.dtneg.servidor" },
+                                    {
+                                      "$": "br.com.sankhya.mgecomercial.event.estoque.insuficiente.produto"
+                                    }
+                                  ]
+                                }
+                              }
+                            }""".trimIndent()
 
-                    val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", json)
-                    val status = getPropFromJSON("status", postbody)
+                val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", json)
+                val status = getPropFromJSON("status", postbody)
 
-                    if (status == "1") {
+                if (status == "1") {
 
-                        nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+                    nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
 
-                        inserirNunotaImp("AD_IMPORTADORITEFS", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
+                    inserirNunotaImp(codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
 
-                        atualizarItensPedido(nunotaRetorno.toBigDecimal(), sequencia, nroFS)
+                    atualizarItensPedido(nunotaRetorno.toBigDecimal(), sequencia, nroFS)
 
-                        inserirErroAPI("AD_IMPORTADORITEFS", codImportacao, codimpIte, "")
+                    inserirErroAPI(codImportacao, codimpIte, "")
 
-                        nunotaPOcab.add(nunota)
+                    nunotaPOcab.add(nunota)
 
-                        contextoAcao!!.setMensagemRetorno(
-                            "Pedidos faturados com sucesso! " + notas.stream().map { obj: BigDecimal? -> obj.toString() }
-                                .collect(Collectors.joining(",")))
-                    } else {
-                        val statusMessage = getPropFromJSON("statusMessage", postbody)
+                    contextoAcao!!.setMensagemRetorno(
+                        "Pedidos faturados com sucesso! " + notas.stream().map { obj: BigDecimal? -> obj.toString() }
+                            .collect(Collectors.joining(",")))
+                } else {
+                    val statusMessage = getPropFromJSON("statusMessage", postbody)
 
-                        inserirErroAPI("AD_IMPORTADORITEFS", codImportacao, codimpIte, statusMessage)
-                    }
-
-//                } else {
-//                    inserirNunotaImp("AD_IMPORTFSITE", codImportacao, codimpIte, nunotaRetorno.toBigDecimal())
-//
-//                    inserirErroAPI("AD_IMPORTFSITE", codImportacao, codimpIte, "")
-//                }
-
+                    inserirErroAPI(codImportacao, codimpIte, statusMessage)
+                }
             }
         }
-
     }
 
     private fun atualizarItensPedido(nunota: BigDecimal?, sequencia: BigDecimal?, nroFolha: BigDecimal?) {
@@ -160,8 +149,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
     }
 
     private fun inserirNunotaImp(
-        intancia: String,
-        codImportacao: Any,
+        codImportacao: BigDecimal,
         codigoIteImportacao: BigDecimal,
         nunotaPedidoFaturado: BigDecimal?
     ) {
@@ -169,7 +157,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
 
         try {
             hnd = JapeSession.open()
-            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigoIteImportacao)
+            JapeFactory.dao("AD_IMPORTADORITEFS").prepareToUpdateByPK(codImportacao, codigoIteImportacao)
                 .set("NUNOTAFS", nunotaPedidoFaturado)
                 .update()
         } catch (e: Exception) {
@@ -180,8 +168,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
     }
 
     private fun inserirErroAPI(
-        intancia: String,
-        codImportacao: Any,
+        codImportacao: BigDecimal,
         codigoIteImportacao: BigDecimal,
         mensagemErro: String?
     ) {
@@ -189,7 +176,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
 
         try {
             hnd = JapeSession.open()
-            JapeFactory.dao(intancia).prepareToUpdateByPK(codImportacao, codigoIteImportacao)
+            JapeFactory.dao("AD_IMPORTADORITEFS").prepareToUpdateByPK(codImportacao, codigoIteImportacao)
                 .set("ERROR", mensagemErro)
                 .update()
         } catch (e: Exception) {
