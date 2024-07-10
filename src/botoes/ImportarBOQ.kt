@@ -7,6 +7,7 @@ import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
+import com.sankhya.ce.jape.JapeHelper
 import org.apache.commons.io.FileUtils
 import utilitarios.convertIso88591ToUtf8
 import utilitarios.converterUTF8ISO88591
@@ -71,6 +72,18 @@ class ImportarBOQ : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
+                        val codprod = json.itemBOQ.trim()
+                        var codvol = ""
+                        var erro = ""
+
+                        val produto = JapeHelper.getVO("Produto", "CODPROD=$codprod") ?: JapeHelper.getVO("Servico", "CODPROD=$codprod")
+
+                        if (produto == null) {
+                            erro = "Produto não encontrado"
+                        } else {
+                            codvol = produto.asString("CODVOL")
+                        }
+
                         val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTNOTASITE")
                         novaLinhaIte.setCampo("CODIMPORTACAO", codimportacao)
                         novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
@@ -96,6 +109,8 @@ class ImportarBOQ : AcaoRotinaJava {
                         novaLinhaIte.setCampo("VLRTOT", converterValorMonetario(json.vlrItem.trim()))
                         novaLinhaIte.setCampo("STATUSBOQ", json.statusBOQ.trim())
                         novaLinhaIte.setCampo("TIPMOV", json.tipmov.trim())
+                        novaLinhaIte.setCampo("CODVOL", codvol)
+                        novaLinhaIte.setCampo("ERROR", erro)
                         novaLinhaIte.save()
 
                         line = br.readLine()
