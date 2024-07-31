@@ -46,7 +46,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
                 val nroFS = po.asBigDecimalOrZero("NROFS")
                 val qtdFS = po.asBigDecimalOrZero("QTDFS")
 
-                val json = """{
+                val jsonString = """{
                               "serviceName": "SelecaoDocumentoSP.faturar",
                               "requestBody": {
                                 "notas": {
@@ -106,7 +106,7 @@ class GerarNotaFiscal : AcaoRotinaJava {
                               }
                             }""".trimIndent()
 
-                val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", json)
+                val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", jsonString)
                 val status = getPropFromJSON("status", postbody)
 
                 if (status == "1") {

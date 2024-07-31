@@ -5,9 +5,13 @@ import br.com.sankhya.extensions.actionbutton.ContextoAcao
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
+import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
+import utilitarios.getFluidCreateVO
+import utilitarios.getPropFromJSON
+import utilitarios.post
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -21,6 +25,9 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 class ImportarFS : AcaoRotinaJava {
+
+    private var codImportador: BigDecimal? = null
+
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
         var hnd: JapeSession.SessionHandle? = null
@@ -33,6 +40,7 @@ class ImportarFS : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
+                codImportador = linha.getCampo("CODIMPORTACAO") as BigDecimal?
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
                 val file = File(ctx.tempFolder, "IMPFS" + System.currentTimeMillis())
@@ -60,21 +68,102 @@ class ImportarFS : AcaoRotinaJava {
                         ultimaLinhaJson = json
 
                         val idAtividade = json.idatividade.trim()
+                        val folhaSevico = json.fs.trim()
+                        val qtdFS = converterValorMonetario(json.qtdFs.trim())
+                        val emissaoFS = json.emissaoFS.trim()
+                        val statusFS = json.statusFS.trim()
 
-                        var hnd2: JapeSession.SessionHandle? = null
+                        val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
+                        val nunotaPO = buscarInfos?.asBigDecimal("NUNOTAPO")
+                        val tipoOperacao = contextoAcao.getParametroSistema("TOPFS")
+                        var serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
 
-                        try {
-                            hnd2 = JapeSession.open()
-                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                            .set("NROFS", json.fs.trim())
-                            .set("QTDFS", converterValorMonetario(json.qtdFs.trim()))
-                            .set("EMISSAOFS", json.emissaoFS.trim())
-                            .set("STATUSFS", json.statusFS.trim())
-                            .update()
-                        } catch (e: Exception) {
-                            MGEModelException.throwMe(e)
-                        } finally {
-                            JapeSession.close(hnd2)
+                        val jsonString = """{
+                              "serviceName": "SelecaoDocumentoSP.faturar",
+                              "requestBody": {
+                                "notas": {
+                                  "codTipOper": $tipoOperacao,
+                                  "dtFaturamento": "$emissaoFS",
+                                  "serie": "$serieTipoOperacao",
+                                  "dtSaida": "",
+                                  "hrSaida": "",
+                                  "tipoFaturamento": "FaturamentoNormal",
+                                  "dataValidada": true,
+                                  "notasComMoeda": {},
+                                  "nota": [
+                                    { "NUNOTA": "$nunotaPO", "itens": { "item": [{ "QTDFAT": $qtdFS, "$":1 }] } }
+                                  ],
+                                  "codLocalDestino": "",
+                                  "conta2": 0,
+                                  "faturarTodosItens": false,
+                                  "umaNotaParaCada": "false",
+                                  "ehWizardFaturamento": true,
+                                  "dtFixaVenc": "",
+                                  "ehPedidoWeb": false,
+                                  "nfeDevolucaoViaRecusa": false,
+                                  "isFaturamentoDanfeSeguranca": false
+                                },
+                                "clientEventList": {
+                                  "clientEvent": [
+                                    { "$": "br.com.sankhya.actionbutton.clientconfirm" },
+                                    { "$": "br.com.sankhya.mgecom.enviar.recebimento.wms.sncm" },
+                                    { "$": "comercial.status.nfe.situacao.diferente" },
+                                    { "$": "br.com.sankhya.mgecom.compra.SolicitacaoComprador" },
+                                    { "$": "br.com.sankhya.mgecom.expedicao.SolicitarUsuarioConferente" },
+                                    { "$": "br.com.sankhya.mgecom.nota.adicional.SolicitarUsuarioGerente" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.nfeAcimaTolerancia" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.processo.wms.andamento" },
+                                    { "$": "br.com.sankhya.mgecom.msg.nao.possui.itens.pendentes" },
+                                    { "$": "br.com.sankhya.mgecomercial.event.baixaPortal" },
+                                    { "$": "br.com.sankhya.mgecom.valida.ChaveNFeCompraTerceiros" },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.validarPedidos" },
+                                    { "$": "br.com.sankhya.mgecom.gera.lote.xmlRejeitado" },
+                                    { "$": "br.com.sankhya.comercial.solicitaContingencia" },
+                                    { "$": "br.com.sankhya.mgecom.cancelamento.notas.remessa" },
+                                    { "$": "br.com.sankhya.mgecomercial.event.compensacao.credito.debito" },
+                                    {
+                                      "$": "br.com.sankhya.modelcore.comercial.cancela.nota.devolucao.wms"
+                                    },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.selecaoDocas" },
+                                    { "$": "br.com.sankhya.mgewms.expedicao.cortePedidos" },
+                                    {
+                                      "$": "br.com.sankhya.modelcore.comercial.cancela.nfce.baixa.caixa.fechado"
+                                    },
+                                    { "$": "br.com.utiliza.dtneg.servidor" },
+                                    {
+                                      "$": "br.com.sankhya.mgecomercial.event.estoque.insuficiente.produto"
+                                    }
+                                  ]
+                                }
+                              }
+                            }""".trimIndent()
+
+                        val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", jsonString)
+                        val status = getPropFromJSON("status", postbody)
+
+                        if (status == "1") {
+                            val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+
+                            var hnd2: JapeSession.SessionHandle? = null
+
+                            try {
+                                hnd2 = JapeSession.open()
+                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                    .set("NROFS", folhaSevico)
+                                    .set("QTDFS", qtdFS)
+                                    .set("EMISSAOFS", emissaoFS)
+                                    .set("STATUSFS", statusFS)
+                                    .set("NUNOTAFS", nunotaRetorno.toBigDecimal())
+                                    .update()
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd2)
+                            }
+
+                        } else {
+                            val statusMessage = getPropFromJSON("statusMessage", postbody)
+                            inserirErroLOG(statusMessage)
                         }
 
                         line = br.readLine()
@@ -126,10 +215,19 @@ class ImportarFS : AcaoRotinaJava {
             null
 
         if (ret == null) {
-            throw Exception("Erro ao processar a linha: $linha")
+//            throw Exception("Erro ao processar a linha: $linha")
+            val erro = "Erro ao processar a linha: $linha"
+            inserirErroLOG(erro)
         }
-        return ret
+        return ret!!
 
+    }
+
+    private fun inserirErroLOG(erro: String) {
+        val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
+        logErroLinha.set("CODIMPORTACAO", codImportador)
+        logErroLinha.set("ERRO", erro)
+        logErroLinha.save()
     }
 
     @Throws(MGEModelException::class)
