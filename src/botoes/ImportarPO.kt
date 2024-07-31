@@ -10,10 +10,7 @@ import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
-import utilitarios.converterDataFormato
-import utilitarios.getFluidCreateVO
-import utilitarios.getPropFromJSON
-import utilitarios.post
+import utilitarios.*
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -114,6 +111,7 @@ class ImportarPO : AcaoRotinaJava {
 
                         if (status == "1") {
                             val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+                            confirmarNotaAPI(nunotaRetorno.toBigDecimal())
 
                             var hnd2: JapeSession.SessionHandle? = null
                             try {
