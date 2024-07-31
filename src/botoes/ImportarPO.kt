@@ -6,9 +6,14 @@ import br.com.sankhya.jape.core.Jape
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
+import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
+import utilitarios.converterDataFormato
+import utilitarios.getFluidCreateVO
+import utilitarios.getPropFromJSON
+import utilitarios.post
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -22,6 +27,9 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 class ImportarPO : AcaoRotinaJava {
+
+    private var codImportador: BigDecimal? = null
+
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
         var hnd: JapeSession.SessionHandle? = null
@@ -34,6 +42,7 @@ class ImportarPO : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
+                codImportador = linha.getCampo("CODIMPORTACAO") as BigDecimal?
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
                 val file = File(ctx.tempFolder, "IMPPO" + System.currentTimeMillis())
@@ -61,23 +70,74 @@ class ImportarPO : AcaoRotinaJava {
                         ultimaLinhaJson = json
 
                         val idAtividade = json.idatividade.trim()
+                        val pedidoPO = json.pedido.trim()
+                        val itemPO = json.itemPo.trim()
+                        val emissaoPO = json.emissaoPO.trim()
+                        val aprovacaoPO = json.aprovacaoPO.trim()
+                        val prazo = json.prazo.trim()
+                        val valorPedido = converterValorMonetario(json.valorPedido.trim())
+                        val municipio = json.municipio.trim()
 
-                        var hnd2: JapeSession.SessionHandle? = null
-                        try {
-                            hnd2 = JapeSession.open()
-                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                            .set("PEDIDOPO", json.pedido.trim())
-                            .set("ITEMPO", json.itemPo.trim())
-                            .set("EMISSAOPO", json.emissaoPO.trim())
-                            .set("APROVACAOPO", json.aprovacaoPO.trim())
-                            .set("PRAZO", json.prazo.trim())
-                            .set("VALORPED", converterValorMonetario(json.valorPedido.trim()))
-                            .set("MUNICIPIO", json.municipio.trim())
-                            .update()
-                        } catch (e: Exception) {
-                            MGEModelException.throwMe(e)
-                        } finally {
-                            JapeSession.close(hnd2)
+                        val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
+                        val nunotaBOQ = buscarInfos?.asBigDecimal("NUNOTABOQ")
+                        val tipoOperacao = contextoAcao.getParametroSistema("TOPPO")
+
+                        val jsonString = """  {
+                                     "serviceName":"SelecaoDocumentoSP.faturar",
+                                     "requestBody":{
+                                        "notas":{
+                                           "codTipOper":$tipoOperacao,
+                                           "dtFaturamento":"$emissaoPO",
+                                           "tipoFaturamento":"FaturamentoNormal",
+                                           "dataValidada":true,
+                                           "notasComMoeda":{
+                                              
+                                           },
+                                           "nota":[
+                                              {
+                                                 "${'$'}": $nunotaBOQ
+                                              }
+                                           ],
+                                           "codLocalDestino":"",
+                                           "faturarTodosItens":true,
+                                           "umaNotaParaCada":"false",
+                                           "ehWizardFaturamento":true,
+                                           "dtFixaVenc":"",
+                                           "ehPedidoWeb":false,
+                                           "nfeDevolucaoViaRecusa":false
+                                        }
+                                     }
+                                  }""".trimIndent()
+
+                        val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", jsonString)
+                        val status = getPropFromJSON("status", postbody)
+
+                        if (status == "1") {
+                            val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+
+                            var hnd2: JapeSession.SessionHandle? = null
+                            try {
+                                hnd2 = JapeSession.open()
+                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                    .set("PEDIDOPO", pedidoPO)
+                                    .set("ITEMPO", itemPO)
+                                    .set("EMISSAOPO", emissaoPO)
+                                    .set("APROVACAOPO", aprovacaoPO)
+                                    .set("PRAZO", prazo)
+                                    .set("VALORPED", valorPedido)
+                                    .set("MUNICIPIO", municipio)
+                                    .set("NUNOTAPO", nunotaRetorno.toBigDecimal())
+                                    .update()
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd2)
+                            }
+
+                        } else {
+                            val statusMessage = getPropFromJSON("statusMessage", postbody)
+                            inserirErroLOG(statusMessage)
+
                         }
 
                         line = br.readLine()
@@ -126,10 +186,19 @@ class ImportarPO : AcaoRotinaJava {
             null
 
         if (ret == null) {
-            throw Exception("Erro ao processar a linha: $linha")
+            val erro = "Erro ao processar a linha: $linha"
+            inserirErroLOG(erro)
+            //throw Exception("Erro ao processar a linha: $linha")
         }
-        return ret
+        return ret!!
 
+    }
+
+    private fun inserirErroLOG(erro: String) {
+        val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
+        logErroLinha.set("CODIMPORTACAO", codImportador)
+        logErroLinha.set("ERRO", erro)
+        logErroLinha.save()
     }
 
     @Throws(MGEModelException::class)

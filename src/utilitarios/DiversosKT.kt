@@ -15,6 +15,8 @@ import java.io.InputStreamReader
 import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
 import java.text.Normalizer
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.stream.Collectors
 import javax.script.Invocable
@@ -255,6 +257,19 @@ fun getFluidUpdateVO(instancia: String?,): FluidUpdateVO {
         JapeSession.close(hnd)
     }
     return vo
+}
+
+fun converterDataFormato(input: String): String {
+    // Define o formato de entrada (yyyy-MM-dd)
+    val formatoEntrada = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    // Define o formato de saída (dd/MM/yyyy)
+    val formatoSaida = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    // Converte a string de entrada para um objeto Date
+    val data = formatoEntrada.parse(input)
+
+    // Retorna a string formatada no novo formato
+    return formatoSaida.format(data)
 }
 
 fun confirmarNotaAPI(nunotaRetorno: BigDecimal) {
