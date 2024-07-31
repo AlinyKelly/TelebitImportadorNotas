@@ -9,6 +9,7 @@ import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
+import utilitarios.confirmarNotaAPI
 import utilitarios.getFluidCreateVO
 import utilitarios.getPropFromJSON
 import utilitarios.post
@@ -72,11 +73,39 @@ class ImportarFS : AcaoRotinaJava {
                         val qtdFS = converterValorMonetario(json.qtdFs.trim())
                         val emissaoFS = json.emissaoFS.trim()
                         val statusFS = json.statusFS.trim()
+                        val aliqISS = converterValorMonetario(json.aliqISS.trim())
+                        val aliqPIS = converterValorMonetario(json.aliqPIS.trim())
+                        val aliqCOFINS = converterValorMonetario(json.aliqCOFINS.trim())
+                        val aliqCSSL = converterValorMonetario(json.aliqCSSL.trim())
+                        val aliqIRRF = converterValorMonetario(json.aliqIRRF.trim())
+                        val aliqINSS = converterValorMonetario(json.aliqINSS.trim())
 
                         val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
                         val nunotaPO = buscarInfos?.asBigDecimal("NUNOTAPO")
+                        val pedidoCompra = buscarInfos?.asString("PEDIDO")
+                        val itemPO = buscarInfos?.asBigDecimalOrZero("ITEMPO")
+                        val vlrItem = buscarInfos?.asBigDecimalOrZero("VLRPEDIDO")
+                        val municipio = buscarInfos?.asString("MUNICIPIO")
+                        val uf = buscarInfos?.asString("UF")
                         val tipoOperacao = contextoAcao.getParametroSistema("TOPFS")
                         var serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+
+                        val buscarEstado = retornaVO("UnidadeFederativa", "UF = $uf")
+                        val estado = buscarEstado?.asString("DESCRICAO") ?: ""
+
+                        val observacao = """"Código de Serviço 31.01 da Lei 116/03
+                                                Alíquota ISS $aliqISS %
+                                                Alíquota PIS $aliqPIS %
+                                                Alíquota COFINS $aliqCOFINS %
+                                                Alíquota CSSL $aliqCSSL %
+                                                Alíquota IRRF $aliqIRRF %
+                                                Alíquota INSS $aliqINSS %
+                                                Pedido de compra $pedidoCompra
+                                                Item do Pedido de Compra $itemPO
+                                                Folha de Serviço $folhaSevico
+                                                Valor Serviço Item  R${'$'} $vlrItem
+                                                Local de Prestação do Serviço ($municipio) - $estado ($uf)
+                                                Base de Cálculo de INSS R${'$'} $vlrItem"""".trimIndent()
 
                         val jsonString = """{
                               "serviceName": "SelecaoDocumentoSP.faturar",
@@ -144,10 +173,8 @@ class ImportarFS : AcaoRotinaJava {
                         if (status == "1") {
                             val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
 
-                            var hnd2: JapeSession.SessionHandle? = null
-
                             try {
-                                hnd2 = JapeSession.open()
+                                hnd = JapeSession.open()
                                 JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
                                     .set("NROFS", folhaSevico)
                                     .set("QTDFS", qtdFS)
@@ -158,7 +185,19 @@ class ImportarFS : AcaoRotinaJava {
                             } catch (e: Exception) {
                                 MGEModelException.throwMe(e)
                             } finally {
-                                JapeSession.close(hnd2)
+                                JapeSession.close(hnd)
+                            }
+
+                            //atualizar observação da nota
+                            try {
+                                hnd = JapeSession.open()
+                                JapeFactory.dao("CabecalhoNota").prepareToUpdateByPK(nunotaRetorno)
+                                    .set("OBSERVACAO", observacao)
+                                    .update()
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd)
                             }
 
                         } else {
