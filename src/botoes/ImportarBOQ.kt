@@ -9,6 +9,7 @@ import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
+import utilitarios.confirmarNotaAPI
 import utilitarios.getFluidCreateVO
 import utilitarios.getPropFromJSON
 import utilitarios.post
@@ -229,6 +230,9 @@ class ImportarBOQ : AcaoRotinaJava {
 
                         if (status == "1") {
                             val nunotaRetorno = getPropFromJSON("responseBody.pk.NUNOTA.${'$'}", postbody).toBigDecimal()
+
+                            confirmarNotaAPI(nunotaRetorno)
+
                             var hnd2: JapeSession.SessionHandle? = null
                             try {
                                 hnd2 = JapeSession.open()

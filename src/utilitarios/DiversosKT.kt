@@ -12,6 +12,7 @@ import com.google.gson.GsonBuilder
 import okhttp3.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
 import java.text.Normalizer
 import java.util.concurrent.TimeUnit
@@ -254,4 +255,28 @@ fun getFluidUpdateVO(instancia: String?,): FluidUpdateVO {
         JapeSession.close(hnd)
     }
     return vo
+}
+
+fun confirmarNotaAPI(nunotaRetorno: BigDecimal) {
+    val json = """{
+                                "serviceName": "ServicosNfeSP.confirmarNota",
+                                "requestBody": {
+                                    "nota": {
+                                        "compensarNotaAutomaticamente": "false",
+                                        "NUNOTA": {
+                                            "${'$'}": "{{$nunotaRetorno}}"
+                                          }
+                                    },
+                                    "clientEventList": {
+                                        "clientEvent": [
+                                            {
+                                                "${'$'}": "br.com.sankhya.actionbutton.clientconfirm"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }""".trimIndent()
+
+    //Cofirmar a nota
+    post("mgecom/service.sbr?serviceName=CACSP.confirmarNota&outputType=json", json)
 }
