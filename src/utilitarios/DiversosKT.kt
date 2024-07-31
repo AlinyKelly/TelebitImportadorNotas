@@ -3,6 +3,8 @@ package utilitarios
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
+import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
+import br.com.sankhya.jape.wrapper.fluid.FluidUpdateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import com.google.gson.Gson
@@ -10,7 +12,6 @@ import com.google.gson.GsonBuilder
 import okhttp3.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.UnsupportedEncodingException
 import java.nio.charset.StandardCharsets
 import java.text.Normalizer
 import java.util.concurrent.TimeUnit
@@ -219,4 +220,38 @@ fun retornaVO(instancia: String?, where: String?): DynamicVO? {
         JapeSession.close(hnd)
     }
     return dynamicVo
+}
+
+@Throws(MGEModelException::class)
+fun getFluidCreateVO(instancia: String?): FluidCreateVO {
+    var hnd: JapeSession.SessionHandle? = null
+    val vo: FluidCreateVO
+    try {
+        hnd = JapeSession.open()
+
+        val separacaoDAO = JapeFactory.dao(instancia)
+        vo = separacaoDAO.create()
+    } catch (e: java.lang.Exception) {
+        throw MGEModelException(e)
+    } finally {
+        JapeSession.close(hnd)
+    }
+    return vo
+}
+
+@Throws(MGEModelException::class)
+fun getFluidUpdateVO(instancia: String?,): FluidUpdateVO {
+    var hnd: JapeSession.SessionHandle? = null
+    val vo: FluidUpdateVO
+    try {
+        hnd = JapeSession.open()
+
+        val updateDAO = JapeFactory.dao(instancia)
+        vo = updateDAO.prepareToUpdateByPK()
+    } catch (e: java.lang.Exception) {
+        throw MGEModelException(e)
+    } finally {
+        JapeSession.close(hnd)
+    }
+    return vo
 }

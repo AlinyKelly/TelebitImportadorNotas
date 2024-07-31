@@ -2,6 +2,7 @@ package botoes
 
 import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava
 import br.com.sankhya.extensions.actionbutton.ContextoAcao
+import br.com.sankhya.jape.core.Jape
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
@@ -33,11 +34,9 @@ class ImportarPO : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
-                val codimportacao = linha.getCampo("CODIMPPO") as BigDecimal?
-
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
-                val file = File(ctx.tempFolder, "ARQUIVOITEPO" + System.currentTimeMillis())
+                val file = File(ctx.tempFolder, "IMPPO" + System.currentTimeMillis())
                 FileUtils.writeByteArrayToFile(file, data)
 
                 hnd = JapeSession.open()
@@ -61,22 +60,25 @@ class ImportarPO : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTPOITE")
-                        novaLinhaIte.setCampo("CODIMPPO", codimportacao)
-                        novaLinhaIte.setCampo("NUNOTA", json.nroUnico.trim())
-                        novaLinhaIte.setCampo("NUNOTAPED", json.pedidoFaturado.trim())
-                        novaLinhaIte.setCampo("SEQUENCIA", json.seqItem.trim())
-                        novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
-                        novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
-                        novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
-                        novaLinhaIte.setCampo("PEDIDOPO", json.pedido.trim())
-                        novaLinhaIte.setCampo("ITEMPO", json.itemPo.trim())
-                        novaLinhaIte.setCampo("EMISSAOPO", json.emissaoPO.trim())
-                        novaLinhaIte.setCampo("APROVACAOPO", json.aprovacaoPO.trim())
-                        novaLinhaIte.setCampo("PRAZO", json.prazo.trim())
-                        novaLinhaIte.setCampo("VALORPED", converterValorMonetario(json.valorPedido.trim()))
-                        novaLinhaIte.setCampo("MUNICIPIO", json.municipio.trim())
-                        novaLinhaIte.save()
+                        val idAtividade = json.idatividade.trim()
+
+                        var hnd2: JapeSession.SessionHandle? = null
+                        try {
+                            hnd2 = JapeSession.open()
+                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                            .set("PEDIDOPO", json.pedido.trim())
+                            .set("ITEMPO", json.itemPo.trim())
+                            .set("EMISSAOPO", json.emissaoPO.trim())
+                            .set("APROVACAOPO", json.aprovacaoPO.trim())
+                            .set("PRAZO", json.prazo.trim())
+                            .set("VALORPED", converterValorMonetario(json.valorPedido.trim()))
+                            .set("MUNICIPIO", json.municipio.trim())
+                            .update()
+                        } catch (e: Exception) {
+                            MGEModelException.throwMe(e)
+                        } finally {
+                            JapeSession.close(hnd2)
+                        }
 
                         line = br.readLine()
 
@@ -119,14 +121,7 @@ class ImportarPO : AcaoRotinaJava {
             cells[4],
             cells[5],
             cells[6],
-            cells[7],
-            cells[8],
-            cells[9],
-            cells[10],
-            cells[11],
-            cells[12],
-            cells[13],
-            cells[14]
+            cells[7]
         ) else
             null
 
@@ -210,14 +205,7 @@ class ImportarPO : AcaoRotinaJava {
     }
 
     data class LinhaJson(
-        val nroUnico: String,
-        val pedidoFaturado: String,
-        val seqItem: String,
-        val idandamento: String,
         val idatividade: String,
-        val statusBOQ: String,
-        val loteBOQ: String,
-        val itemBOQ: String,
         val pedido: String,
         val itemPo: String,
         val emissaoPO: String,

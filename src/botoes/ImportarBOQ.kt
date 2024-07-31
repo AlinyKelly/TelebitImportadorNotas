@@ -40,11 +40,9 @@ class ImportarBOQ : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
-                val codimportacao = linha.getCampo("CODIMPORTACAO") as BigDecimal?
-
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
-                val file = File(ctx.tempFolder, "IMPCABECALHO" + System.currentTimeMillis())
+                val file = File(ctx.tempFolder, "IMPBOQ" + System.currentTimeMillis())
                 FileUtils.writeByteArrayToFile(file, data)
 
                 hnd = JapeSession.open()
@@ -68,52 +66,74 @@ class ImportarBOQ : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val codprod = json.itemBOQ.trim()
-                        var codvol = ""
-                        var erro = ""
+                        val idAtividade = json.idatividade.trim()
+                        val statusBOQ = json.statusBOQ.trim()
+                        val statusFin: String
 
-                        val produto = JapeHelper.getVO("Produto", "CODPROD=$codprod") ?: JapeHelper.getVO("Servico", "CODPROD=$codprod")
-
-                        if (produto == null) {
-                            erro = "Produto não encontrado"
-                        } else {
-                            codvol = produto.asString("CODVOL")
+                        when (statusBOQ) {
+                            "BOQ Solicitada" -> {
+                                statusFin = "1"
+                            }
+                            "Criado" -> {
+                                statusFin = "2"
+                            }
+                            "Pedido de PO" -> {
+                                statusFin = "3"
+                            }
+                            "PO Emitido" -> {
+                                statusFin = "4"
+                            }
+                            "Reprovado" -> {
+                                statusFin = "5"
+                            }
+                            "Revisado" -> {
+                                statusFin = "6"
+                            }
+                            "Revisão" -> {
+                                statusFin = "7"
+                            }
+                            "RP" -> {
+                                statusFin = "8"
+                            }
+                            "Ag. Faturamento" -> {
+                                statusFin = "9"
+                            }
+                            else -> {
+                                statusFin = "10"
+                            }
                         }
 
-                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTNOTASITE")
-                        novaLinhaIte.setCampo("CODIMPORTACAO", codimportacao)
-                        novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
-                        novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
-                        novaLinhaIte.setCampo("CODPROJ", json.projeto.trim())
-                        novaLinhaIte.setCampo("NUMCONTRATO", json.contrato.trim())
-                        novaLinhaIte.setCampo("CODPARC", json.codparc.trim())
-                        novaLinhaIte.setCampo("CODPROD", json.itemBOQ.trim())
-                        novaLinhaIte.setCampo("DTINCBOQ", json.dataInclusaoBOQ.trim())
-                        novaLinhaIte.setCampo("QTDNEG", converterValorMonetario(json.qtdBOQ.trim()))
-                        novaLinhaIte.setCampo("LOTEBOQ", json.loteBOQ.trim())
-                        novaLinhaIte.setCampo("TIPOBOQ", json.tipoBOQ.trim())
-                        novaLinhaIte.setCampo("SITEID", json.siteID.trim())
-                        novaLinhaIte.setCampo("ENDERECOID", json.enderecoID.trim())
-                        novaLinhaIte.setCampo("MUNBOQ", json.municipioBOQ.trim())
-                        novaLinhaIte.setCampo("UFBOQ", json.ufBOQ.trim())
-                        novaLinhaIte.setCampo("REGIONAL", json.regionalBOQ.trim())
-                        novaLinhaIte.setCampo("GRUPOUSU", json.grupoUsuarios.trim())
-                        novaLinhaIte.setCampo("ORGCHAVE", json.orgChave.trim())
-                        novaLinhaIte.setCampo("OCBOQ", json.ocBOQ.trim())
-                        novaLinhaIte.setCampo("VLRITELPU", converterValorMonetario(json.vlrItemLPU.trim()))
-                        novaLinhaIte.setCampo("VLRUNIT", converterValorMonetario(json.vltUnitItem.trim()))
-                        novaLinhaIte.setCampo("VLRTOT", converterValorMonetario(json.vlrItem.trim()))
-                        novaLinhaIte.setCampo("STATUSBOQ", json.statusBOQ.trim())
-                        novaLinhaIte.setCampo("TIPMOV", json.tipmov.trim())
-                        novaLinhaIte.setCampo("CODVOL", codvol)
-                        novaLinhaIte.setCampo("ERROR", erro)
-                        novaLinhaIte.save()
+                        var hnd2: JapeSession.SessionHandle? = null
+                        try {
+                            hnd2 = JapeSession.open()
+                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                .set("LOTEBOQ", json.loteBOQ.trim())
+                                .set("TIPOBOQ", json.tipoBOQ.trim())
+                                .set("DATAINC", json.dataInclusaoBOQ.trim())
+                                .set("GRUPOUSU", json.grupoUsuarios.trim())
+                                .set("ORGCHAVE", json.orgChave.trim())
+                                .set("OCBOQ", json.ocBOQ.trim())
+                                .set("SITEID", json.siteID.trim())
+                                .set("ENDERECOID", json.enderecoID.trim())
+                                .set("MUNBOQ", json.municipioBOQ.trim())
+                                .set("UFBOQ", json.ufBOQ.trim())
+                                .set("STATUSFIN", statusFin) //Status da BOQ
+                                .update()
+
+                        } catch (e: Exception) {
+                            MGEModelException.throwMe(e)
+                        } finally {
+                            JapeSession.close(hnd2)
+                        }
 
                         line = br.readLine()
 
                     }
 
                 }
+
+                //GERAR O LANÇAMENTO DA BOQ AQUI
+
 
             }
         } catch (e: Exception) {
@@ -162,12 +182,7 @@ class ImportarBOQ : AcaoRotinaJava {
             cells[15],
             cells[16],
             cells[17],
-            cells[18],
-            cells[19],
-            cells[20],
-            cells[21],
-            cells[22],
-            cells[23]
+            cells[18]
         ) else
             null
 
@@ -251,12 +266,7 @@ class ImportarBOQ : AcaoRotinaJava {
     }
 
     data class LinhaJson(
-        val idandamento: String,
         val idatividade: String,
-        val projeto: String,
-        val contrato: String,
-        val tipmov: String,
-        val codparc: String,
         val loteBOQ: String,
         val tipoBOQ: String,
         val itemBOQ: String,

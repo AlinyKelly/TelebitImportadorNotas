@@ -33,11 +33,9 @@ class ImportarFS : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
-                val codimportacao = linha.getCampo("CODFS") as BigDecimal?
-
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
-                val file = File(ctx.tempFolder, "ARQUIVOITEFS" + System.currentTimeMillis())
+                val file = File(ctx.tempFolder, "IMPFS" + System.currentTimeMillis())
                 FileUtils.writeByteArrayToFile(file, data)
 
                 hnd = JapeSession.open()
@@ -61,19 +59,23 @@ class ImportarFS : AcaoRotinaJava {
                         val json = trataLinha(line)
                         ultimaLinhaJson = json
 
-                        val novaLinhaIte = contextoAcao.novaLinha("AD_IMPORTADORITEFS")
-                        novaLinhaIte.setCampo("CODFS", codimportacao)
-                        novaLinhaIte.setCampo("NUNOTA", json.nroUnicoPO.trim())
-                        novaLinhaIte.setCampo("NUNOTAFS", json.nroUnicoFS.trim())
-                        novaLinhaIte.setCampo("SEQUENCIA", json.seqItem.trim())
-                        novaLinhaIte.setCampo("IDANDAMENTO", json.idandamento.trim())
-                        novaLinhaIte.setCampo("IDATIVIDADE", json.idatividade.trim())
-                        novaLinhaIte.setCampo("ITEMBOQ", json.itemBOQ.trim())
-                        novaLinhaIte.setCampo("NROFS", json.fs.trim())
-                        novaLinhaIte.setCampo("QTDFS", converterValorMonetario(json.qtdFs.trim()))
-                        novaLinhaIte.setCampo("EMISSAOFS", json.emissaoFS.trim())
-                        novaLinhaIte.setCampo("STATUSFS", json.statusFS.trim())
-                        novaLinhaIte.save()
+                        val idAtividade = json.idatividade.trim()
+
+                        var hnd2: JapeSession.SessionHandle? = null
+
+                        try {
+                            hnd2 = JapeSession.open()
+                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                            .set("NROFS", json.fs.trim())
+                            .set("QTDFS", converterValorMonetario(json.qtdFs.trim()))
+                            .set("EMISSAOFS", json.emissaoFS.trim())
+                            .set("STATUSFS", json.statusFS.trim())
+                            .update()
+                        } catch (e: Exception) {
+                            MGEModelException.throwMe(e)
+                        } finally {
+                            JapeSession.close(hnd2)
+                        }
 
                         line = br.readLine()
 
@@ -83,7 +85,7 @@ class ImportarFS : AcaoRotinaJava {
 
             }
         } catch (e: Exception) {
-            throw MGEModelException("$e $ultimaLinhaJson ")
+            throw MGEModelException("$e $ultimaLinhaJson")
         } finally {
             JapeSession.close(hnd)
         }
@@ -118,7 +120,8 @@ class ImportarFS : AcaoRotinaJava {
             cells[6],
             cells[7],
             cells[8],
-            cells[9]
+            cells[9],
+            cells[10]
         ) else
             null
 
@@ -202,15 +205,16 @@ class ImportarFS : AcaoRotinaJava {
     }
 
     data class LinhaJson(
-        val nroUnicoPO: String,
-        val nroUnicoFS: String,
-        val seqItem: String,
-        val idandamento: String,
         val idatividade: String,
-        val itemBOQ: String,
         val fs: String,
         val qtdFs: String,
         val emissaoFS: String,
-        val statusFS: String
+        val statusFS: String,
+        val aliqISS: String,
+        val aliqPIS: String,
+        val aliqCOFINS: String,
+        val aliqCSSL: String,
+        val aliqIRRF: String,
+        val aliqINSS: String
     )
 }
