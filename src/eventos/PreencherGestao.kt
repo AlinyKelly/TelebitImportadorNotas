@@ -8,7 +8,7 @@ import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
-import br.com.sankhya.modelcore.util.DynamicEntityNames
+import net.fortuna.ical4j.model.component.VAlarm
 import utilitarios.getFluidCreateVO
 import utilitarios.retornaVO
 
@@ -119,6 +119,10 @@ class PreencherGestao : EventoProgramavelJava {
         val buscarEquipe = retornaVO("EquipeProjeto", "NUFAP = $nuFap AND CODTIPFUNCAO = 1")
         val gerente = buscarEquipe?.asBigDecimalOrZero("CODUSU")
 
+        // Buscar a empresa na tela de contratos.
+        val buscarContrato = retornaVO("Contrato", "NUMCONTRATO = $contrato")
+        val empresa = buscarContrato?.asBigDecimalOrZero("CODEMP")
+
         // Buscar informações da LPU na tabela de Produtos/Serviços do Contrato TCSPSC
         val buscarItemLPU = retornaVO("ProdutoServicoContrato", "NUMCONTRATO = $contrato AND CODPROD = $servico")
         val quantidade = buscarItemLPU?.asBigDecimalOrZero("NUMUSUARIOS")
@@ -129,8 +133,9 @@ class PreencherGestao : EventoProgramavelJava {
         val buscarPrecoLPU = retornaVO("PrecoContrato", "NUMCONTRATO = $contrato AND CODPROD = $servico")
         val valorUnit = buscarPrecoLPU?.asBigDecimalOrZero("VALOR")
 
-//        val buscarServProd = retornaVO("Servico", "CODPROD = $servico") ?: retornaVO("Produto", "CODPROD = $servico")
+        val buscarServProd = retornaVO("Servico", "CODPROD = $servico") ?: retornaVO("Produto", "CODPROD = $servico")
 //        val descricaoProd = buscarServProd?.asString("DESCRPROD")
+        val codvol = buscarServProd?.asString("CODVOL")
 
         val gestaoProjFCVo: FluidCreateVO = getFluidCreateVO("AD_TGESPROJ")
         gestaoProjFCVo.set("NUFAP", nuFap)
@@ -152,6 +157,8 @@ class PreencherGestao : EventoProgramavelJava {
         gestaoProjFCVo.set("VLRATV", valorUnit)
         gestaoProjFCVo.set("OBSERVACAO", observacao)
         gestaoProjFCVo.set("CODPARC", parceiro)
+        gestaoProjFCVo.set("CODEMP", empresa)
+        gestaoProjFCVo.set("CODVOL", codvol)
         gestaoProjFCVo.save()
     }
 
