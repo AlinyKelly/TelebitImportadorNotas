@@ -5,10 +5,13 @@ import br.com.sankhya.extensions.actionbutton.ContextoAcao
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
+import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
-import com.sankhya.ce.jape.JapeHelper
 import org.apache.commons.io.FileUtils
+import utilitarios.getFluidCreateVO
+import utilitarios.getPropFromJSON
+import utilitarios.post
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -25,8 +28,8 @@ import java.util.regex.Pattern
 * Botão para importar as informações da BOQ
 * */
 class ImportarBOQ : AcaoRotinaJava {
-//    private var projeto: BigDecimal? = null
-//    private var contrato: BigDecimal? = null
+
+    private var codImportador: BigDecimal? = null
 
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
@@ -40,6 +43,7 @@ class ImportarBOQ : AcaoRotinaJava {
             for (linha in linhasSelecionadas) {
                 var count = 0
 
+                codImportador = linha.getCampo("CODIMPORTACAO") as BigDecimal?
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
                 val file = File(ctx.tempFolder, "IMPBOQ" + System.currentTimeMillis())
@@ -67,6 +71,16 @@ class ImportarBOQ : AcaoRotinaJava {
                         ultimaLinhaJson = json
 
                         val idAtividade = json.idatividade.trim()
+                        val loteBOQ = json.loteBOQ.trim()
+                        val tipoBOQ = json.tipoBOQ.trim()
+                        val dataInc = json.dataInclusaoBOQ.trim()
+                        val grupoUsuarios = json.grupoUsuarios.trim()
+                        val orgChave = json.orgChave.trim()
+                        val oc = json.ocBOQ.trim()
+                        val siteID = json.siteID.trim()
+                        val enderecoID = json.enderecoID.trim()
+                        val municipio = json.municipioBOQ.trim()
+                        val ufBOQ = json.ufBOQ.trim()
                         val statusBOQ = json.statusBOQ.trim()
                         val statusFin: String
 
@@ -74,56 +88,175 @@ class ImportarBOQ : AcaoRotinaJava {
                             "BOQ Solicitada" -> {
                                 statusFin = "1"
                             }
+
                             "Criado" -> {
                                 statusFin = "2"
                             }
+
                             "Pedido de PO" -> {
                                 statusFin = "3"
                             }
+
                             "PO Emitido" -> {
                                 statusFin = "4"
                             }
+
                             "Reprovado" -> {
                                 statusFin = "5"
                             }
+
                             "Revisado" -> {
                                 statusFin = "6"
                             }
+
                             "Revisão" -> {
                                 statusFin = "7"
                             }
+
                             "RP" -> {
                                 statusFin = "8"
                             }
+
                             "Ag. Faturamento" -> {
                                 statusFin = "9"
                             }
-                            else -> {
+
+                            "Faturado" -> {
                                 statusFin = "10"
+                            }
+
+                            else -> {
+                                statusFin = "N"
                             }
                         }
 
-                        var hnd2: JapeSession.SessionHandle? = null
-                        try {
-                            hnd2 = JapeSession.open()
-                            JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                                .set("LOTEBOQ", json.loteBOQ.trim())
-                                .set("TIPOBOQ", json.tipoBOQ.trim())
-                                .set("DATAINC", json.dataInclusaoBOQ.trim())
-                                .set("GRUPOUSU", json.grupoUsuarios.trim())
-                                .set("ORGCHAVE", json.orgChave.trim())
-                                .set("OCBOQ", json.ocBOQ.trim())
-                                .set("SITEID", json.siteID.trim())
-                                .set("ENDERECOID", json.enderecoID.trim())
-                                .set("MUNBOQ", json.municipioBOQ.trim())
-                                .set("UFBOQ", json.ufBOQ.trim())
-                                .set("STATUSFIN", statusFin) //Status da BOQ
-                                .update()
+                        //GERAR O LANÇAMENTO DA BOQ AQUI
+                        // Criar o JSON com as informações necessárias para criar o lançamento
+                        // Enviar o json e receber o NUNOTA enviado no retorno.
+                        // Atualizar o campo NUNOTABOQ na tela de Gestão
+                        // Se gerar algum erro no processo salvar o erro no campo de erro ou em  alguma tela de LOG
+                        val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
+                        val nufap = buscarInfos?.asBigDecimal("NUFAP")
+                        val etapa = buscarInfos?.asBigDecimal("NUMETAPA")
+                        val projeto = buscarInfos?.asBigDecimal("CODPROJ")
+                        val contrato = buscarInfos?.asBigDecimal("NUMCONTRATO")
+                        val parceiro = buscarInfos?.asBigDecimal("CODPARC")
+                        val empresa = buscarInfos?.asBigDecimal("CODEMP")
+                        val codvol = buscarInfos?.asString("CODVOL")
+                        val codProd = buscarInfos?.asBigDecimal("CODPROD")
+                        val top = contextoAcao.getParametroSistema("TOPBOQ") as BigDecimal
+                        val tipoVenda = contextoAcao.getParametroSistema("TIPNEGBOQ") as BigDecimal
+                        val qtdNeg = json.qtdBOQ.trim().toBigDecimal()
+                        val vlrUnit = json.vltUnitItem.trim().toBigDecimal()
 
-                        } catch (e: Exception) {
-                            MGEModelException.throwMe(e)
-                        } finally {
-                            JapeSession.close(hnd2)
+                        val jsonString = """{
+                                               "serviceName":"CACSP.incluirNota",
+                                               "requestBody":{
+                                                  "nota":{
+                                                     "cabecalho":{
+                                                        "NUNOTA":{
+                                                        },
+                                                        "CODPARC":{
+                                                           "${'$'}":"$parceiro"
+                                                        },
+                                                        "DTNEG":{
+                                                           "${'$'}":"$dataInc"
+                                                        },
+                                                        "CODTIPOPER":{
+                                                           "${'$'}":"$top"
+                                                        },
+                                                        "CODTIPVENDA":{
+                                                           "${'$'}":"$tipoVenda"
+                                                        },
+                                                        "CODVEND":{
+                                                           "${'$'}":"0"
+                                                        },
+                                                        "CODEMP":{
+                                                           "${'$'}":"$empresa"
+                                                        },
+                                                        "TIPMOV":{
+                                                           "${'$'}":"P"
+                                                        },
+                                                        "NUMCONTRATO":{
+                                                           "${'$'}":"$contrato"
+                                                        },
+                                                        "CODPROJ":{
+                                                           "${'$'}":"$projeto"
+                                                        },
+                                                        "AD_LOTEBOQ":{
+                                                           "${'$'}":"$loteBOQ"
+                                                        },
+                                                        "AD_NUFAP":{
+                                                           "${'$'}":"$nufap"
+                                                        }
+                                                     },
+                                                     "itens":{
+                                                        "INFORMARPRECO":"True",
+                                                        "item":[
+                                                              {
+                                                               "NUNOTA":{
+                                                              },
+                                                              "CODPROD":{
+                                                                 "${'$'}":"$codProd"
+                                                              },
+                                                              "QTDNEG":{
+                                                                 "${'$'}":"$qtdNeg"
+                                                              },
+                                                              "CODLOCALORIG":{
+                                                                 "${'$'}":"0"
+                                                              },
+                                                              "CODVOL":{
+                                                                 "${'$'}":"'$codvol'"
+                                                              },
+                                                              "PERCDESC": {
+                                                                "${'$'}": "0"
+                                                              },
+                                                             "VLRUNIT": {
+                                                                "${'$'}": "$vlrUnit"
+                                                              },
+                                                             "AD_NUMETAPA": {
+                                                                "${'$'}": "$etapa"
+                                                              }
+                                                           }               
+                                                        ]
+                                                     }
+                                                  }
+                                               }
+                                            }""".trimIndent()
+
+                        val (postbody) = post("mgecom/service.sbr?serviceName=CACSP.incluirNota&outputType=json", jsonString)
+                        val status = getPropFromJSON("status", postbody)
+
+                        if (status == "1") {
+                            val nunotaRetorno = getPropFromJSON("responseBody.pk.NUNOTA.${'$'}", postbody).toBigDecimal()
+                            var hnd2: JapeSession.SessionHandle? = null
+                            try {
+                                hnd2 = JapeSession.open()
+                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                    .set("NUNOTABOQ", nunotaRetorno)
+                                    .set("LOTEBOQ", loteBOQ)
+                                    .set("TIPOBOQ", tipoBOQ)
+                                    .set("DATAINC", dataInc)
+                                    .set("GRUPOUSU", grupoUsuarios)
+                                    .set("ORGCHAVE", orgChave)
+                                    .set("OCBOQ", oc)
+                                    .set("SITEID", siteID)
+                                    .set("ENDERECOID", enderecoID)
+                                    .set("MUNBOQ", municipio)
+                                    .set("UFBOQ", ufBOQ)
+                                    .set("STATUSFIN", statusFin) //Status da BOQ
+                                    .update()
+
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd2)
+                            }
+
+                        } else {
+                            val statusMessage = getPropFromJSON("statusMessage", postbody)
+                            inserirErroLOG(statusMessage)
+
                         }
 
                         line = br.readLine()
@@ -132,7 +265,6 @@ class ImportarBOQ : AcaoRotinaJava {
 
                 }
 
-                //GERAR O LANÇAMENTO DA BOQ AQUI
 
 
             }
@@ -187,10 +319,21 @@ class ImportarBOQ : AcaoRotinaJava {
             null
 
         if (ret == null) {
-            throw Exception("Erro ao processar a linha: $linha")
-        }
-        return ret
+            //throw Exception("Erro ao processar a linha: $linha")
+            // Salvar o erro de processamento da linha na tela detalhe de log.
+            val erro = "Erro ao processar a linha: $linha"
 
+            inserirErroLOG(erro)
+        }
+
+        return ret!!
+    }
+
+    private fun inserirErroLOG(erro: String) {
+        val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
+        logErroLinha.set("CODIMPORTACAO", codImportador)
+        logErroLinha.set("ERRO", erro)
+        logErroLinha.save()
     }
 
     @Throws(MGEModelException::class)
