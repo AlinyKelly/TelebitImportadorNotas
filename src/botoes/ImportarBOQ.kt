@@ -223,8 +223,11 @@ class ImportarBOQ : AcaoRotinaJava {
                                                         "AD_NUFAP":{
                                                            "${'$'}":"$nufap"
                                                         },
-                                                        "STATUSNOTA":{
-                                                           "${'$'}":"L"
+                                                        "AD_NUMETAPA":{
+                                                           "${'$'}":"$etapa"
+                                                        },
+                                                        "AD_IDATIVIDADE":{
+                                                           "${'$'}":"$idAtividade"
                                                         }
                                                      },
                                                      "itens":{
@@ -300,7 +303,8 @@ class ImportarBOQ : AcaoRotinaJava {
             }
 
         } catch (e: Exception) {
-            throw MGEModelException("$e $ultimaLinhaJson ")
+            //throw MGEModelException("$e $ultimaLinhaJson ")
+            inserirErroLOG("$e $ultimaLinhaJson ", "Importação - Erro na linha importada.")
         } finally {
             JapeSession.close(hnd)
         }

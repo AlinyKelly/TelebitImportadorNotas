@@ -73,41 +73,40 @@ class ImportarFS : AcaoRotinaJava {
                         val qtdFS = converterValorMonetario(json.qtdFs.trim())
                         val emissaoFS = json.emissaoFS.trim()
                         val statusFS = json.statusFS.trim()
-                        val aliqISS = converterValorMonetario(json.aliqISS.trim())
-                        val aliqPIS = converterValorMonetario(json.aliqPIS.trim())
-                        val aliqCOFINS = converterValorMonetario(json.aliqCOFINS.trim())
-                        val aliqCSSL = converterValorMonetario(json.aliqCSSL.trim())
-                        val aliqIRRF = converterValorMonetario(json.aliqIRRF.trim())
-                        val aliqINSS = converterValorMonetario(json.aliqINSS.trim())
+//                        val codigoServico = json.codigoservico.trim()
+//                        val aliqISS = converterValorMonetario(json.aliqISS.trim())
+//                        val aliqPIS = converterValorMonetario(json.aliqPIS.trim())
+//                        val aliqCOFINS = converterValorMonetario(json.aliqCOFINS.trim())
+//                        val aliqCSSL = converterValorMonetario(json.aliqCSSL.trim())
+//                        val aliqIRRF = converterValorMonetario(json.aliqIRRF.trim())
+//                        val aliqINSS = converterValorMonetario(json.aliqINSS.trim())
 
                         val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
                         val nunotaPO = buscarInfos?.asBigDecimal("NUNOTAPO")
-                        val pedidoCompra = buscarInfos?.asString("PEDIDO")
-                        val itemPO = buscarInfos?.asBigDecimalOrZero("ITEMPO")
-                        val vlrItem = buscarInfos?.asBigDecimalOrZero("VLRPEDIDO")
-                        val municipio = buscarInfos?.asString("MUNICIPIO")
-                        val uf = buscarInfos?.asString("UF")
                         val tipoOperacao = contextoAcao.getParametroSistema("TOPFS")
-                        var serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+                        val serieTipoOperacao = contextoAcao.getParametroSistema("SERIETOPFS")
+                        val nunotaFS = buscarInfos?.asBigDecimalOrZero("NUNOTAFS")
+                        val nroFS = buscarInfos?.asString("NROFS")
 
-                        val buscarEstado = retornaVO("UnidadeFederativa", "UF = $uf")
-                        val estado = buscarEstado?.asString("DESCRICAO") ?: ""
+                        if (nroFS == null) {
+                            var hnd2: JapeSession.SessionHandle? = null
+                            try {
+                                hnd2 = JapeSession.open()
+                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                    .set("NROFS", folhaSevico)
+                                    .set("QTDFS", qtdFS)
+                                    .set("DTEMISSAOFS", stringToTimeStamp(emissaoFS))
+                                    .set("STATUSFS", statusFS)
+                                    .update()
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd2)
+                            }
+                        }
 
-                        val observacao = """"Código de Serviço 31.01 da Lei 116/03
-                                                Alíquota ISS $aliqISS %
-                                                Alíquota PIS $aliqPIS %
-                                                Alíquota COFINS $aliqCOFINS %
-                                                Alíquota CSSL $aliqCSSL %
-                                                Alíquota IRRF $aliqIRRF %
-                                                Alíquota INSS $aliqINSS %
-                                                Pedido de compra $pedidoCompra
-                                                Item do Pedido de Compra $itemPO
-                                                Folha de Serviço $folhaSevico
-                                                Valor Serviço Item  R${'$'} $vlrItem
-                                                Local de Prestação do Serviço ($municipio) - $estado ($uf)
-                                                Base de Cálculo de INSS R${'$'} $vlrItem"""".trimIndent()
-
-                        val jsonString = """{
+                        if (nunotaFS == null) {
+                            val jsonString = """{
                               "serviceName": "SelecaoDocumentoSP.faturar",
                               "requestBody": {
                                 "notas": {
@@ -167,56 +166,47 @@ class ImportarFS : AcaoRotinaJava {
                               }
                             }""".trimIndent()
 
-                        val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", jsonString)
-                        val status = getPropFromJSON("status", postbody)
+                            val (postbody) = post(
+                                "mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json",
+                                jsonString
+                            )
+                            val status = getPropFromJSON("status", postbody)
 
-                        if (status == "1") {
-                            val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+                            if (status == "1") {
+                                val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
 
-                            try {
-                                hnd = JapeSession.open()
-                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                                    .set("NROFS", folhaSevico)
-                                    .set("QTDFS", qtdFS)
-                                    .set("EMISSAOFS", emissaoFS)
-                                    .set("STATUSFS", statusFS)
-                                    .set("NUNOTAFS", nunotaRetorno.toBigDecimal())
-                                    .update()
-                            } catch (e: Exception) {
-                                MGEModelException.throwMe(e)
-                            } finally {
-                                JapeSession.close(hnd)
+                                var hnd4: JapeSession.SessionHandle? = null
+                                try {
+                                    hnd4 = JapeSession.open()
+                                    JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                        .set("NUNOTAFS", nunotaRetorno.toBigDecimal())
+                                        .update()
+                                } catch (e: Exception) {
+                                    MGEModelException.throwMe(e)
+                                } finally {
+                                    JapeSession.close(hnd4)
+                                }
+
+                            } else {
+                                val statusMessage = getPropFromJSON("statusMessage", postbody)
+                                inserirErroLOG("ID Atividade nro $idAtividade - Erro: $statusMessage", "API - Erro ao criar Folha de Serviço.")
                             }
-
-                            //atualizar observação da nota
-                            try {
-                                hnd = JapeSession.open()
-                                JapeFactory.dao("CabecalhoNota").prepareToUpdateByPK(nunotaRetorno)
-                                    .set("OBSERVACAO", observacao)
-                                    .update()
-                            } catch (e: Exception) {
-                                MGEModelException.throwMe(e)
-                            } finally {
-                                JapeSession.close(hnd)
-                            }
-
-                        } else {
-                            val statusMessage = getPropFromJSON("statusMessage", postbody)
-                            inserirErroLOG(statusMessage)
                         }
 
                         line = br.readLine()
-
                     }
 
                 }
 
             }
         } catch (e: Exception) {
-            throw MGEModelException("$e $ultimaLinhaJson")
+            //throw MGEModelException("$e $ultimaLinhaJson")
+            inserirErroLOG("$e $ultimaLinhaJson", "Importação - Erro na linha importada.")
         } finally {
             JapeSession.close(hnd)
         }
+
+        contextoAcao.setMensagemRetorno("Lançamento(s) inserido(s) com sucesso! Verifique a tela de Gestão de Projetos.")
     }
 
     private fun getReplaceFileInfo(line: String): String {
@@ -249,23 +239,26 @@ class ImportarFS : AcaoRotinaJava {
             cells[7],
             cells[8],
             cells[9],
-            cells[10]
+            cells[10],
+            cells[11]
         ) else
             null
 
         if (ret == null) {
 //            throw Exception("Erro ao processar a linha: $linha")
             val erro = "Erro ao processar a linha: $linha"
-            inserirErroLOG(erro)
+            inserirErroLOG(erro, "Importação - Erro na linha importada.")
         }
         return ret!!
 
     }
 
-    private fun inserirErroLOG(erro: String) {
+    private fun inserirErroLOG(erro: String, origemErro: String) {
         val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
         logErroLinha.set("CODIMPORTACAO", codImportador)
         logErroLinha.set("ERRO", erro)
+        logErroLinha.set("DHERRO", getDhAtual())
+        logErroLinha.set("ORIGEMERRO", origemErro)
         logErroLinha.save()
     }
 
@@ -304,7 +297,7 @@ class ImportarFS : AcaoRotinaJava {
      */
     fun stringToTimeStamp(strDate: String): Timestamp? {
         try {
-            val formatter: DateFormat = SimpleDateFormat("MM/dd/yyyy")
+            val formatter: DateFormat = SimpleDateFormat("dd/MM/yyyy")
             val date: Date = formatter.parse(strDate)
             return Timestamp(date.time)
         } catch (e: Exception) {
@@ -347,6 +340,7 @@ class ImportarFS : AcaoRotinaJava {
         val qtdFs: String,
         val emissaoFS: String,
         val statusFS: String,
+        val codigoservico: String,
         val aliqISS: String,
         val aliqPIS: String,
         val aliqCOFINS: String,

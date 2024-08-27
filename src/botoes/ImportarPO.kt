@@ -2,7 +2,6 @@ package botoes
 
 import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava
 import br.com.sankhya.extensions.actionbutton.ContextoAcao
-import br.com.sankhya.jape.core.Jape
 import br.com.sankhya.jape.core.JapeSession
 import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
@@ -77,79 +76,105 @@ class ImportarPO : AcaoRotinaJava {
 
                         val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
                         val nunotaBOQ = buscarInfos?.asBigDecimal("NUNOTABOQ")
+                        val nunotaPO = buscarInfos?.asBigDecimal("NUNOTAPO")
+                        val pedido = buscarInfos?.asString("PEDIDO")
+
                         val tipoOperacao = contextoAcao.getParametroSistema("TOPPO")
 
-                        val jsonString = """  {
-                                     "serviceName":"SelecaoDocumentoSP.faturar",
-                                     "requestBody":{
-                                        "notas":{
-                                           "codTipOper":$tipoOperacao,
-                                           "dtFaturamento":"$emissaoPO",
-                                           "tipoFaturamento":"FaturamentoNormal",
-                                           "dataValidada":true,
-                                           "notasComMoeda":{
-                                              
-                                           },
-                                           "nota":[
-                                              {
-                                                 "${'$'}": $nunotaBOQ
-                                              }
-                                           ],
-                                           "codLocalDestino":"",
-                                           "faturarTodosItens":true,
-                                           "umaNotaParaCada":"false",
-                                           "ehWizardFaturamento":true,
-                                           "dtFixaVenc":"",
-                                           "ehPedidoWeb":false,
-                                           "nfeDevolucaoViaRecusa":false
-                                        }
-                                     }
-                                  }""".trimIndent()
+                        // Inserir as informações da PO depois realizar o faturamento da BOQ
 
-                        val (postbody) = post("mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json", jsonString)
-                        val status = getPropFromJSON("status", postbody)
-
-                        if (status == "1") {
-                            val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
-                            confirmarNotaAPI(nunotaRetorno.toBigDecimal())
-
+                        if (pedido == null) {
                             var hnd2: JapeSession.SessionHandle? = null
                             try {
                                 hnd2 = JapeSession.open()
                                 JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                                    .set("PEDIDOPO", pedidoPO)
-                                    .set("ITEMPO", itemPO)
-                                    .set("EMISSAOPO", emissaoPO)
-                                    .set("APROVACAOPO", aprovacaoPO)
-                                    .set("PRAZO", prazo)
-                                    .set("VALORPED", valorPedido)
-                                    .set("MUNICIPIO", municipio)
-                                    .set("NUNOTAPO", nunotaRetorno.toBigDecimal())
+                                    .set("PEDIDO", pedidoPO)
+                                    .set("ITEMPO", itemPO.toBigDecimal())
+                                    .set("DTEMISSAOPO", stringToTimeStamp(emissaoPO))
+                                    .set("DTAPROVPO", stringToTimeStamp(aprovacaoPO))
+                                    .set("DTPRAZO", stringToTimeStamp(prazo))
+                                    .set("VLRPEDIDO", valorPedido)
+                                    .set("MUNICIPIOPO", municipio)
                                     .update()
                             } catch (e: Exception) {
                                 MGEModelException.throwMe(e)
                             } finally {
                                 JapeSession.close(hnd2)
                             }
+                        }
 
-                        } else {
-                            val statusMessage = getPropFromJSON("statusMessage", postbody)
-                            inserirErroLOG(statusMessage)
+                        if (nunotaPO == null) {
+                            val jsonString = """{
+                                         "serviceName":"SelecaoDocumentoSP.faturar",
+                                         "requestBody":{
+                                            "notas":{
+                                               "codTipOper":$tipoOperacao,
+                                               "dtFaturamento":"$aprovacaoPO",
+                                               "tipoFaturamento":"FaturamentoNormal",
+                                               "dataValidada":false,
+                                               "notasComMoeda":{
+                                                  
+                                               },
+                                               "nota":[
+                                                  {
+                                                     "${'$'}": $nunotaBOQ
+                                                  }
+                                               ],
+                                               "faturarTodosItens":true
+                                            }
+                                         }
+                                      }""".trimIndent()
 
+                            val (postbody) = post(
+                                "mgecom/service.sbr?serviceName=SelecaoDocumentoSP.faturar&outputType=json",
+                                jsonString
+                            )
+                            val status = getPropFromJSON("status", postbody)
+
+                            if (status == "1") {
+                                val nunotaRetorno = getPropFromJSON("responseBody.notas.nota.${'$'}", postbody)
+
+                                //Antes de confirmar a nota deve-se trocar a data de negociação para a mesma data do faturamento
+                                //Enviar nunota da po para a gestão de projetos
+                                var hnd3: JapeSession.SessionHandle? = null
+                                try {
+                                    hnd3 = JapeSession.open()
+                                    JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                        .set("NUNOTAPO", nunotaRetorno.toBigDecimal())
+                                        .update()
+                                } catch (e: Exception) {
+                                    MGEModelException.throwMe(e)
+                                } finally {
+                                    JapeSession.close(hnd3)
+                                }
+
+                                //Confirmar pedido
+                                val postbodyConfirmar = confirmarNotaAPI(nunotaRetorno.toBigDecimal())
+                                val statusConfirmar = getPropFromJSON("status", postbodyConfirmar)
+                                if (statusConfirmar == "0") {
+                                    val statusMessage = getPropFromJSON("statusMessage", postbodyConfirmar)
+                                    inserirErroLOG("ID Atividade nro $idAtividade - Erro: $statusMessage", "API Confirmar Nota - Status não confirmado.")
+                                }
+
+                            } else {
+                                val statusMessage = getPropFromJSON("statusMessage", postbody)
+                                inserirErroLOG("ID Atividade nro $idAtividade - Erro: $statusMessage", "API Criar Pedido - Erro ao criar Pedido de Venda.")
+                            }
                         }
 
                         line = br.readLine()
-
                     }
-
                 }
 
             }
         } catch (e: Exception) {
-            throw MGEModelException("$e $ultimaLinhaJson ")
+            //throw MGEModelException("$e $ultimaLinhaJson ")
+            inserirErroLOG("$e $ultimaLinhaJson", "Importação - Erro na linha importada.")
         } finally {
             JapeSession.close(hnd)
         }
+
+        contextoAcao.setMensagemRetorno("Lançamento(s) inserido(s) com sucesso! Verifique a tela de Gestão de Projetos.")
     }
 
     private fun getReplaceFileInfo(line: String): String {
@@ -185,17 +210,19 @@ class ImportarPO : AcaoRotinaJava {
 
         if (ret == null) {
             val erro = "Erro ao processar a linha: $linha"
-            inserirErroLOG(erro)
+            inserirErroLOG(erro, "Importação - Erro na linha importada.")
             //throw Exception("Erro ao processar a linha: $linha")
         }
         return ret!!
 
     }
 
-    private fun inserirErroLOG(erro: String) {
+    private fun inserirErroLOG(erro: String, origemErro: String) {
         val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
         logErroLinha.set("CODIMPORTACAO", codImportador)
         logErroLinha.set("ERRO", erro)
+        logErroLinha.set("DHERRO", getDhAtual())
+        logErroLinha.set("ORIGEMERRO", origemErro)
         logErroLinha.save()
     }
 
@@ -234,7 +261,7 @@ class ImportarPO : AcaoRotinaJava {
      */
     fun stringToTimeStamp(strDate: String): Timestamp? {
         try {
-            val formatter: DateFormat = SimpleDateFormat("MM/dd/yyyy")
+            val formatter: DateFormat = SimpleDateFormat("dd/MM/yyyy")
             val date: Date = formatter.parse(strDate)
             return Timestamp(date.time)
         } catch (e: Exception) {
