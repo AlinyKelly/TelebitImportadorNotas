@@ -272,7 +272,7 @@ fun converterDataFormato(input: String): String {
     return formatoSaida.format(data)
 }
 
-fun confirmarNotaAPI(nunotaRetorno: BigDecimal) {
+fun confirmarNotaAPI(nunotaRetorno: BigDecimal): String {
     val json = """{
                                 "serviceName": "ServicosNfeSP.confirmarNota",
                                 "requestBody": {
@@ -293,5 +293,7 @@ fun confirmarNotaAPI(nunotaRetorno: BigDecimal) {
                             }""".trimIndent()
 
     //Cofirmar a nota
-    post("mgecom/service.sbr?serviceName=CACSP.confirmarNota&outputType=json", json)
+    val (postbody) = post("mgecom/service.sbr?serviceName=CACSP.confirmarNota&outputType=json", json)
+
+    return postbody
 }
