@@ -9,10 +9,7 @@ import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
 import br.com.sankhya.ws.ServiceContext
 import org.apache.commons.io.FileUtils
-import utilitarios.confirmarNotaAPI
-import utilitarios.getFluidCreateVO
-import utilitarios.getPropFromJSON
-import utilitarios.post
+import utilitarios.*
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -34,6 +31,7 @@ class ImportarBOQ : AcaoRotinaJava {
 
     @Throws(MGEModelException::class, IOException::class)
     override fun doAction(contextoAcao: ContextoAcao) {
+        println("Botao Importador BOQ")
         var hnd: JapeSession.SessionHandle? = null
 
         var ultimaLinhaJson: LinhaJson? = null
@@ -45,6 +43,7 @@ class ImportarBOQ : AcaoRotinaJava {
                 var count = 0
 
                 codImportador = linha.getCampo("CODIMPORTACAO") as BigDecimal?
+
                 val data = linha.getCampo("ARQUIVO") as ByteArray?
                 val ctx = ServiceContext.getCurrent()
                 val file = File(ctx.tempFolder, "IMPBOQ" + System.currentTimeMillis())
@@ -74,7 +73,7 @@ class ImportarBOQ : AcaoRotinaJava {
                         val idAtividade = json.idatividade.trim()
                         val loteBOQ = json.loteBOQ.trim()
                         val tipoBOQ = json.tipoBOQ.trim()
-                        val dataInc = json.dataInclusaoBOQ.trim()
+                        val dataInc = stringToTimeStamp(json.dataInclusaoBOQ.trim())
                         val grupoUsuarios = json.grupoUsuarios.trim()
                         val orgChave = json.orgChave.trim()
                         val oc = json.ocBOQ.trim()
@@ -83,59 +82,56 @@ class ImportarBOQ : AcaoRotinaJava {
                         val municipio = json.municipioBOQ.trim()
                         val ufBOQ = json.ufBOQ.trim()
                         val statusBOQ = json.statusBOQ.trim()
-                        val statusFin: String
+                        val qtdNeg = converterValorMonetario(json.qtdBOQ.trim())
+                        val vlrUnit = converterValorMonetario(json.vltUnitItem.trim())
+//                        val statusFin: String
+//
+//                        when (statusBOQ) {
+//                            "BOQ Solicitada" -> {
+//                                statusFin = "1"
+//                            }
+//
+//                            "Criado" -> {
+//                                statusFin = "2"
+//                            }
+//
+//                            "Pedido de PO" -> {
+//                                statusFin = "3"
+//                            }
+//
+//                            "PO Emitido" -> {
+//                                statusFin = "4"
+//                            }
+//
+//                            "Reprovado" -> {
+//                                statusFin = "5"
+//                            }
+//
+//                            "Revisado" -> {
+//                                statusFin = "6"
+//                            }
+//
+//                            "Revisão" -> {
+//                                statusFin = "7"
+//                            }
+//
+//                            "RP" -> {
+//                                statusFin = "8"
+//                            }
+//
+//                            "Ag. Faturamento" -> {
+//                                statusFin = "9"
+//                            }
+//
+//                            "Faturado" -> {
+//                                statusFin = "10"
+//                            }
+//
+//                            else -> {
+//                                statusFin = "N"
+//                            }
+//                        }
 
-                        when (statusBOQ) {
-                            "BOQ Solicitada" -> {
-                                statusFin = "1"
-                            }
-
-                            "Criado" -> {
-                                statusFin = "2"
-                            }
-
-                            "Pedido de PO" -> {
-                                statusFin = "3"
-                            }
-
-                            "PO Emitido" -> {
-                                statusFin = "4"
-                            }
-
-                            "Reprovado" -> {
-                                statusFin = "5"
-                            }
-
-                            "Revisado" -> {
-                                statusFin = "6"
-                            }
-
-                            "Revisão" -> {
-                                statusFin = "7"
-                            }
-
-                            "RP" -> {
-                                statusFin = "8"
-                            }
-
-                            "Ag. Faturamento" -> {
-                                statusFin = "9"
-                            }
-
-                            "Faturado" -> {
-                                statusFin = "10"
-                            }
-
-                            else -> {
-                                statusFin = "N"
-                            }
-                        }
-
-                        //GERAR O LANÇAMENTO DA BOQ AQUI
-                        // Criar o JSON com as informações necessárias para criar o lançamento
-                        // Enviar o json e receber o NUNOTA enviado no retorno.
-                        // Atualizar o campo NUNOTABOQ na tela de Gestão
-                        // Se gerar algum erro no processo salvar o erro no campo de erro ou em  alguma tela de LOG
                         val buscarInfos = retornaVO("AD_TGESPROJ", "IDATIVIDADE = ${idAtividade.toBigDecimal()}")
                         val nufap = buscarInfos?.asBigDecimal("NUFAP")
                         val etapa = buscarInfos?.asBigDecimal("NUMETAPA")
@@ -145,12 +141,49 @@ class ImportarBOQ : AcaoRotinaJava {
                         val empresa = buscarInfos?.asBigDecimal("CODEMP")
                         val codvol = buscarInfos?.asString("CODVOL")
                         val codProd = buscarInfos?.asBigDecimal("CODPROD")
+                        val dataInclusao = buscarInfos?.asTimestamp("DATAINC")
                         val top = contextoAcao.getParametroSistema("TOPBOQ") as BigDecimal
                         val tipoVenda = contextoAcao.getParametroSistema("TIPNEGBOQ") as BigDecimal
-                        val qtdNeg = json.qtdBOQ.trim().toBigDecimal()
-                        val vlrUnit = json.vltUnitItem.trim().toBigDecimal()
+                        val nunotaBOQ = buscarInfos?.asBigDecimal("NUNOTABOQ")
+                        val loteBOQInfo = buscarInfos?.asBigDecimal("LOTEBOQ")
 
-                        val jsonString = """{
+                        println("ID Atividade = $idAtividade")
+
+                        if (loteBOQInfo == null) {
+                            println("Inserir a BOQ na tela de Gestão")
+                            var hnd2: JapeSession.SessionHandle? = null
+                            try {
+                                hnd2 = JapeSession.open()
+                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                    .set("LOTEBOQ", loteBOQ.toBigDecimal())
+                                    .set("TIPOBOQ", tipoBOQ)
+                                    .set("DATAINC", dataInc)
+                                    .set("GRUPOUSU", grupoUsuarios)
+                                    .set("ORGCHAVE", orgChave)
+                                    .set("OC", oc)
+                                    .set("SITEID", siteID)
+                                    .set("ENDID", enderecoID)
+                                    .set("MUNBOQ", municipio)
+                                    .set("UFBOQ", ufBOQ)
+                                    .set("STATUSBOQ", statusBOQ) //Status da BOQ
+                                    .update()
+
+                            } catch (e: Exception) {
+                                MGEModelException.throwMe(e)
+                            } finally {
+                                JapeSession.close(hnd2)
+                            }
+                        }
+
+                        //Criar o orçamento
+                        if (nunotaBOQ == null) {
+                            println("GERAR O LANÇAMENTO DA BOQ AQUI")
+                            // Criar o JSON com as informações necessárias para criar o lançamento
+                            // Enviar o json e receber o NUNOTA enviado no retorno.
+                            // Atualizar o campo NUNOTABOQ na tela de Gestão
+                            // Se gerar algum erro no processo salvar o erro no campo de erro ou em  alguma tela de LOG
+
+                            val jsonString = """{
                                                "serviceName":"CACSP.incluirNota",
                                                "requestBody":{
                                                   "nota":{
@@ -161,7 +194,7 @@ class ImportarBOQ : AcaoRotinaJava {
                                                            "${'$'}":"$parceiro"
                                                         },
                                                         "DTNEG":{
-                                                           "${'$'}":"$dataInc"
+                                                           "${'$'}":"${json.dataInclusaoBOQ.trim()}"
                                                         },
                                                         "CODTIPOPER":{
                                                            "${'$'}":"$top"
@@ -189,6 +222,9 @@ class ImportarBOQ : AcaoRotinaJava {
                                                         },
                                                         "AD_NUFAP":{
                                                            "${'$'}":"$nufap"
+                                                        },
+                                                        "STATUSNOTA":{
+                                                           "${'$'}":"L"
                                                         }
                                                      },
                                                      "itens":{
@@ -207,7 +243,7 @@ class ImportarBOQ : AcaoRotinaJava {
                                                                  "${'$'}":"0"
                                                               },
                                                               "CODVOL":{
-                                                                 "${'$'}":"'$codvol'"
+                                                                 "${'$'}":"$codvol"
                                                               },
                                                               "PERCDESC": {
                                                                 "${'$'}": "0"
@@ -225,58 +261,52 @@ class ImportarBOQ : AcaoRotinaJava {
                                                }
                                             }""".trimIndent()
 
-                        val (postbody) = post("mgecom/service.sbr?serviceName=CACSP.incluirNota&outputType=json", jsonString)
-                        val status = getPropFromJSON("status", postbody)
+                            val (postbody) = post("mgecom/service.sbr?serviceName=CACSP.incluirNota&outputType=json",jsonString)
+                            val status = getPropFromJSON("status", postbody)
 
-                        if (status == "1") {
-                            val nunotaRetorno = getPropFromJSON("responseBody.pk.NUNOTA.${'$'}", postbody).toBigDecimal()
+                            if (status == "1") {
+                                val nunotaRetorno = getPropFromJSON("responseBody.pk.NUNOTA.${'$'}", postbody).toBigDecimal()
 
-                            confirmarNotaAPI(nunotaRetorno)
+                                var hnd3: JapeSession.SessionHandle? = null
+                                try {
+                                    hnd3 = JapeSession.open()
+                                    JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
+                                        .set("NUNOTABOQ", nunotaRetorno)
+                                        .update()
+                                } catch (e: Exception) {
+                                    MGEModelException.throwMe(e)
+                                } finally {
+                                    JapeSession.close(hnd3)
+                                }
 
-                            var hnd2: JapeSession.SessionHandle? = null
-                            try {
-                                hnd2 = JapeSession.open()
-                                JapeFactory.dao("AD_TGESPROJ").prepareToUpdateByPK(idAtividade.toBigDecimal())
-                                    .set("NUNOTABOQ", nunotaRetorno)
-                                    .set("LOTEBOQ", loteBOQ)
-                                    .set("TIPOBOQ", tipoBOQ)
-                                    .set("DATAINC", dataInc)
-                                    .set("GRUPOUSU", grupoUsuarios)
-                                    .set("ORGCHAVE", orgChave)
-                                    .set("OCBOQ", oc)
-                                    .set("SITEID", siteID)
-                                    .set("ENDERECOID", enderecoID)
-                                    .set("MUNBOQ", municipio)
-                                    .set("UFBOQ", ufBOQ)
-                                    .set("STATUSFIN", statusFin) //Status da BOQ
-                                    .update()
+                                //Confirmar a nota
+                                val postbodyConfirmar = confirmarNotaAPI(nunotaRetorno)
+                                val statusConfirmar = getPropFromJSON("status", postbodyConfirmar)
+                                if (statusConfirmar == "0") {
+                                    val statusMessage = getPropFromJSON("statusMessage", postbodyConfirmar)
+                                    inserirErroLOG("ID Atividade Nro. $idAtividade - Erro: $statusMessage", "API Confirmar Nota - Status não confirmado")
+                                }
 
-                            } catch (e: Exception) {
-                                MGEModelException.throwMe(e)
-                            } finally {
-                                JapeSession.close(hnd2)
+                            } else {
+                                val statusMessage = getPropFromJSON("statusMessage", postbody)
+                                inserirErroLOG("ID Atividade nro $idAtividade - Erro: $statusMessage", "API Criar Orçamento - Erro ao criar orçamento.")
                             }
-
-                        } else {
-                            val statusMessage = getPropFromJSON("statusMessage", postbody)
-                            inserirErroLOG(statusMessage)
 
                         }
 
                         line = br.readLine()
-
                     }
-
                 }
-
-
-
             }
+
         } catch (e: Exception) {
             throw MGEModelException("$e $ultimaLinhaJson ")
         } finally {
             JapeSession.close(hnd)
         }
+
+        //MENSAGEM DE RETORNO
+        contextoAcao.setMensagemRetorno("Lançamento(s) inserido(s) com sucesso! Verifique a tela de Gestão de Projetos.")
     }
 
     private fun getReplaceFileInfo(line: String): String {
@@ -327,16 +357,18 @@ class ImportarBOQ : AcaoRotinaJava {
             // Salvar o erro de processamento da linha na tela detalhe de log.
             val erro = "Erro ao processar a linha: $linha"
 
-            inserirErroLOG(erro)
+            inserirErroLOG(erro, "Importação - Erro na linha importada.")
         }
 
         return ret!!
     }
 
-    private fun inserirErroLOG(erro: String) {
+    private fun inserirErroLOG(erro: String, origemErro: String) {
         val logErroLinha: FluidCreateVO = getFluidCreateVO("AD_LOGIMPGP")
         logErroLinha.set("CODIMPORTACAO", codImportador)
         logErroLinha.set("ERRO", erro)
+        logErroLinha.set("DHERRO", getDhAtual())
+        logErroLinha.set("ORIGEMERRO", origemErro)
         logErroLinha.save()
     }
 
@@ -368,14 +400,14 @@ class ImportarBOQ : AcaoRotinaJava {
     }
 
     /**
-     * Converte uma data dd/mm/yyyy ou dd-mm-yyyy em timestampb
+     * Converte uma data dd/mm/yyyy ou dd-mm-yyyy em timestamp
      * @author Luis Ricardo Alves Santos
      * @param strDate  Texto a ser convertido
      * @return [Timestamp]
      */
     fun stringToTimeStamp(strDate: String): Timestamp? {
         try {
-            val formatter: DateFormat = SimpleDateFormat("MM/dd/yyyy")
+            val formatter: DateFormat = SimpleDateFormat("dd/MM/yyyy")
             val date: Date = formatter.parse(strDate)
             return Timestamp(date.time)
         } catch (e: Exception) {
