@@ -8,7 +8,6 @@ import br.com.sankhya.jape.vo.DynamicVO
 import br.com.sankhya.jape.wrapper.JapeFactory
 import br.com.sankhya.jape.wrapper.fluid.FluidCreateVO
 import br.com.sankhya.modelcore.MGEModelException
-import net.fortuna.ical4j.model.component.VAlarm
 import utilitarios.getFluidCreateVO
 import utilitarios.retornaVO
 
